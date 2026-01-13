@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/png" href="/images/ScriptsSubConverter.png">
+    <title>脚本管理</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f7fb;
+            min-height: 100vh;
+        }
+        nav { background: #ffffff; border-bottom: 1px solid #e5e7eb; box-shadow: 0 6px 18px rgba(0,0,0,0.05); }
+        nav .nav-container { max-width: 1200px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; padding: 15px 30px; }
+        nav .logo { color: #111827; font-size: 1.6em; font-weight: bold; display: flex; align-items: center; gap: 10px; text-decoration: none; }
+        nav .logo img { height: 40px; width: auto; border-radius: 6px; }
+        nav .nav-links { display: flex; gap: 15px; }
+        nav .nav-btn { background: transparent; color: #4b5563; border: none; padding: 10px 18px; border-radius: 8px; cursor: pointer; font-size: 0.95em; transition: all 0.2s; font-weight: 600; text-decoration: none; }
+        nav .nav-btn:hover { background: #eef2ff; color: #4338ca; transform: translateY(-1px); }
+        nav .nav-btn.active { background: #4338ca; color: #ffffff; }
+        .lang-toggle { background: #f3f4f6; color: #374151; padding: 6px 12px; border-radius: 6px; font-size: 0.85em; cursor: pointer; border: 1px solid #d1d5db; transition: all 0.2s; }
+        .lang-toggle:hover { background: #e5e7eb; }
+        .logout-btn { background: #dc3545; color: white; padding: 6px 12px; border-radius: 6px; font-size: 0.85em; cursor: pointer; border: none; transition: all 0.2s; margin-left: 8px; }
+        .logout-btn:hover { background: #c82333; }
+        .container { max-width: 900px; margin: 0 auto; padding: 40px 20px; }
+        .card { background: white; border-radius: 14px; padding: 36px; box-shadow: 0 12px 30px rgba(0,0,0,0.08); margin-bottom: 30px; border: 1px solid #e5e7eb; }
+        .card h2 { color: #333; margin-bottom: 25px; font-size: 2em; border-bottom: 3px solid #667eea; padding-bottom: 15px; }
+        .form-group { margin-bottom: 20px; }
+        label { display: block; margin-bottom: 8px; color: #333; font-weight: 600; font-size: 1em; }
+        input[type="text"], textarea { width: 100%; padding: 12px 15px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 1em; font-family: 'Segoe UI', sans-serif; transition: all 0.3s; background: #fff; }
+        textarea { min-height: 320px; font-family: 'Courier New', monospace; }
+        input:focus, textarea:focus { outline: none; border-color: #667eea; box-shadow: 0 0 0 3px rgba(102,126,234,0.1); }
+        button { background: #4338ca; color: white; padding: 12px 30px; border: none; border-radius: 8px; cursor: pointer; font-size: 1.05em; font-weight: 600; transition: all 0.3s; margin-right: 10px; }
+        button:hover { background: #3730a3; transform: translateY(-1px); box-shadow: 0 5px 12px rgba(67,56,202,0.25); }
+        button.secondary { background: #6c757d; }
+        button.secondary:hover { background: #5a6268; }
+        button.danger { background: #dc3545; }
+        button.danger:hover { background: #c82333; }
+        .script-list { margin-top: 20px; }
+        .script-item { background: #f8f9fa; padding: 15px 20px; margin-bottom: 12px; border-radius: 8px; border-left: 4px solid #667eea; display: flex; justify-content: space-between; align-items: center; transition: all 0.3s; }
+        .script-item:hover { background: #e9ecef; transform: translateX(5px); }
+        .script-item h3 { color: #333; font-size: 1.1em; margin-bottom: 5px; }
+        .script-item .excerpt { color: #555; max-width: 520px; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; line-height: 1.45; word-break: break-all; }
+        .script-actions { display: flex; gap: 10px; }
+        .empty-state { text-align: center; padding: 40px; color: #999; font-size: 1.1em; }
+        .message { position: fixed; top: 20px; right: 20px; padding: 12px 18px; border-radius: 10px; color: white; z-index: 9999; box-shadow: 0 10px 30px rgba(0,0,0,0.2); animation: slideIn 0.3s ease; }
+        .message.success { background: #28a745; }
+        .message.error { background: #dc3545; }
+        @keyframes slideIn { from { transform: translateX(400px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        @media (max-width: 768px) { nav .nav-container { flex-direction: column; gap: 15px; } nav .nav-links { width: 100%; justify-content: center; } .container { padding: 20px 15px; } .card { padding: 25px 20px; } }
+    </style>
+</head>
+<body>
+    <nav>
+        <div class="nav-container">
+            <a href="/" class="logo">
+                <img src="/images/ScriptsSubConverter.png" alt="ScriptsSubConverter">
+                <span data-zh="订阅转换器" data-en="ScriptsSubConverter">订阅转换器</span>
+            </a>
+            <div class="nav-links">
+                <a class="nav-btn" href="/index.html" data-zh="转换" data-en="Convert">转换</a>
+                <a class="nav-btn active" href="/scripts.html" data-zh="脚本" data-en="Scripts">脚本</a>
+                <a class="nav-btn" href="/docs.html" data-zh="介绍" data-en="Docs">介绍</a>
+                <button class="lang-toggle" onclick="toggleLang()">中/EN</button>
+                <button class="logout-btn" onclick="logout()" data-zh="登出" data-en="Logout">登出</button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="card">
+            <h2 data-zh="📝 脚本管理" data-en="📝 Script Management">📝 脚本管理</h2>
+
+            <div class="form-group">
+                <label data-zh="脚本名称" data-en="Script Name">脚本名称</label>
+                <input type="text" id="scriptName" data-zh-placeholder="例如: my-script" data-en-placeholder="e.g: my-script" placeholder="例如: my-script" />
+            </div>
+
+            <div class="form-group">
+                <label data-zh="脚本代码" data-en="Script Code">脚本代码</label>
+                <textarea id="scriptCode" 
+                    data-zh-placeholder="// 简单文本处理\nreturn content.split('\\n').filter(line => line.trim()).join('\\n');\n\n// 或 Clash 配置处理\nfunction main(config) {\n  // 处理 config 对象\n  return config;\n}" 
+                    data-en-placeholder="// Simple text processing\nreturn content.split('\\n').filter(line => line.trim()).join('\\n');\n\n// Or Clash config processing\nfunction main(config) {\n  // Process config object\n  return config;\n}" 
+                    placeholder="// 简单文本处理\nreturn content.split('\\n').filter(line => line.trim()).join('\\n');\n\n// 或 Clash 配置处理\nfunction main(config) {\n  // 处理 config 对象\n  return config;\n}"></textarea>
+            </div>
+
+            <button onclick="saveScript()" data-zh="💾 保存脚本" data-en="💾 Save Script">💾 保存脚本</button>
+            <button class="secondary" onclick="clearScriptForm()" data-zh="🗑️ 清空" data-en="🗑️ Clear">🗑️ 清空</button>
+
+            <h3 style="color: #333; margin-top: 40px; margin-bottom: 15px;" data-zh="已有脚本" data-en="Existing Scripts">已有脚本</h3>
+            <button class="secondary" onclick="loadScripts()" data-zh="🔄 刷新列表" data-en="🔄 Refresh">🔄 刷新列表</button>
+            <div id="scripts-container" class="script-list"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = window.location.origin + '/api';
+        const i18nMessages = {
+            saved: { zh: '脚本已保存', en: 'Script saved' },
+            deleted: { zh: '脚本已删除', en: 'Script deleted' },
+            enterName: { zh: '请输入脚本名称', en: 'Please enter script name' },
+            enterCode: { zh: '请输入脚本代码', en: 'Please enter script code' },
+            confirmDelete: { zh: '确定删除脚本', en: 'Confirm delete script' },
+            loadFailed: { zh: '加载脚本失败', en: 'Failed to load scripts' },
+            saveFailed: { zh: '保存脚本失败', en: 'Failed to save script' },
+            deleteFailed: { zh: '删除脚本失败', en: 'Failed to delete script' },
+            noScripts: { zh: '暂无脚本，点击上方保存创建第一个脚本', en: 'No scripts yet, click Save to create your first script' },
+            edit: { zh: '编辑', en: 'Edit' },
+            delete: { zh: '删除', en: 'Delete' },
+            deleteFail: { zh: '删除失败', en: 'Delete failed' }
+        };
+
+        function showMessage(message, type = 'success') {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${type}`;
+            const lang = localStorage.getItem('lang') || 'zh';
+            messageDiv.textContent = typeof message === 'object' ? message[lang] : message;
+            document.body.appendChild(messageDiv);
+            setTimeout(() => messageDiv.remove(), 3000);
+        }
+
+        async function loadScripts() {
+            try {
+                const response = await fetch(`${API_BASE}/scripts`);
+                const scripts = await response.json();
+                const container = document.getElementById('scripts-container');
+
+                if (!scripts.length) {
+                    const lang = localStorage.getItem('lang') || 'zh';
+                    container.innerHTML = `<div class="empty-state">${i18nMessages.noScripts[lang]}</div>`;
+                    return;
+                }
+
+                const lang = localStorage.getItem('lang') || 'zh';
+                container.innerHTML = scripts.map(script => `
+                    <div class="script-item">
+                        <div>
+                            <h3>${script.name}</h3>
+                            <p class="excerpt">${(script.code || '').replace(/\s+/g, ' ').trim()}</p>
+                        </div>
+                        <div class="script-actions">
+                            <button class="secondary" onclick="editScript('${script.name}')">${i18nMessages.edit[lang]}</button>
+                            <button class="danger" onclick="deleteScript('${script.name}')">${i18nMessages.delete[lang]}</button>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (error) {
+                const lang = localStorage.getItem('lang') || 'zh';
+                showMessage(i18nMessages.loadFailed[lang] + ': ' + error.message, 'error');
+            }
+        }
+
+        async function editScript(name) {
+            try {
+                const response = await fetch(`${API_BASE}/scripts/${name}`);
+                const script = await response.json();
+                document.getElementById('scriptName').value = name;
+                document.getElementById('scriptCode').value = script.code;
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            } catch (error) {
+                const lang = localStorage.getItem('lang') || 'zh';
+                showMessage(i18nMessages.loadFailed[lang] + ': ' + error.message, 'error');
+            }
+        }
+
+        async function saveScript() {
+            const name = document.getElementById('scriptName').value.trim();
+            const code = document.getElementById('scriptCode').value.trim();
+
+            if (!name) {
+                showMessage(i18nMessages.enterName, 'error');
+                return;
+            }
+            if (!code) {
+                showMessage(i18nMessages.enterCode, 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/scripts/${name}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ code })
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error);
+                }
+
+                showMessage(i18nMessages.saved);
+                clearScriptForm();
+                loadScripts();
+            } catch (error) {
+                const lang = localStorage.getItem('lang') || 'zh';
+                showMessage(i18nMessages.saveFailed[lang] + ': ' + error.message, 'error');
+            }
+        }
+
+        async function deleteScript(name) {
+            const lang = localStorage.getItem('lang') || 'zh';
+            const confirmMsg = lang === 'zh' ? `确定删除脚本 "${name}" 吗？` : `Delete script "${name}"?`;
+            if (!confirm(confirmMsg)) return;
+
+            try {
+                const resp = await fetch(`${API_BASE}/scripts/${name}`, { method: 'DELETE' });
+                if (!resp.ok) throw new Error(i18nMessages.deleteFail[lang]);
+                showMessage(i18nMessages.deleted);
+                loadScripts();
+            } catch (error) {
+                showMessage(i18nMessages.deleteFailed[lang] + ': ' + error.message, 'error');
+            }
+        }
+
+        function clearScriptForm() {
+            document.getElementById('scriptName').value = '';
+            document.getElementById('scriptCode').value = '';
+        }
+
+        window.addEventListener('DOMContentLoaded', loadScripts);
+
+        // Language toggle
+        function toggleLang() {
+            const current = localStorage.getItem('lang') || 'zh';
+            const newLang = current === 'zh' ? 'en' : 'zh';
+            localStorage.setItem('lang', newLang);
+            applyLang(newLang);
+        }
+
+        function applyLang(lang) {
+            document.querySelectorAll('[data-zh]').forEach(el => {
+                const text = el.getAttribute(`data-${lang}`);
+                if (text) el.textContent = text;
+            });
+            document.querySelectorAll('[data-zh-placeholder]').forEach(el => {
+                const placeholder = el.getAttribute(`data-${lang}-placeholder`);
+                if (placeholder) el.placeholder = placeholder;
+            });
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            const lang = localStorage.getItem('lang') || 'zh';
+            if (lang === 'en') applyLang('en');
+        });
+
+        // 登出功能
+        async function logout() {
+            try {
+                await fetch('/api/logout', { method: 'POST' });
+                window.location.href = '/login';
+            } catch (error) {
+                console.error('Logout error:', error);
+                window.location.href = '/login';
+            }
+        }
+    </script>
+</body>
+</html>

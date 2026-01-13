@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/png" href="/images/ScriptsSubConverter.png">
+    <title>订阅转换</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f7fb;
+            min-height: 100vh;
+        }
+        nav {
+            background: #ffffff;
+            border-bottom: 1px solid #e5e7eb;
+            box-shadow: 0 6px 18px rgba(0,0,0,0.05);
+        }
+        nav .nav-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 30px;
+        }
+        nav .logo {
+            color: #111827;
+            font-size: 1.6em;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            text-decoration: none;
+        }
+        nav .logo img {
+            height: 40px;
+            width: auto;
+            border-radius: 6px;
+        }
+        nav .nav-links { display: flex; gap: 15px; }
+        nav .nav-btn {
+            background: transparent;
+            color: #4b5563;
+            border: none;
+            padding: 10px 18px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.95em;
+            transition: all 0.2s;
+            font-weight: 600;
+            text-decoration: none;
+        }
+        nav .nav-btn:hover { background: #eef2ff; color: #4338ca; transform: translateY(-1px); }
+        nav .nav-btn.active { background: #4338ca; color: #ffffff; }
+        .lang-toggle { background: #f3f4f6; color: #374151; padding: 6px 12px; border-radius: 6px; font-size: 0.85em; cursor: pointer; border: 1px solid #d1d5db; transition: all 0.2s; }
+        .lang-toggle:hover { background: #e5e7eb; }
+        .logout-btn { background: #dc3545; color: white; padding: 6px 12px; border-radius: 6px; font-size: 0.85em; cursor: pointer; border: none; transition: all 0.2s; margin-left: 8px; }
+        .logout-btn:hover { background: #c82333; }
+
+        .container { max-width: 900px; margin: 0 auto; padding: 40px 20px; }
+        .card {
+            background: #ffffff;
+            border-radius: 14px;
+            padding: 36px;
+            box-shadow: 0 12px 30px rgba(0,0,0,0.08);
+            margin-bottom: 30px;
+            border: 1px solid #e5e7eb;
+        }
+        .card h2 {
+            color: #333;
+            margin-bottom: 25px;
+            font-size: 2em;
+            border-bottom: 3px solid #4338ca;
+            padding-bottom: 15px;
+        }
+        .form-group { margin-bottom: 20px; }
+        label { display: block; margin-bottom: 8px; color: #333; font-weight: 600; font-size: 1em; }
+        input[type="text"], input[type="url"], textarea, select {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 1em;
+            font-family: 'Segoe UI', sans-serif;
+            transition: all 0.3s;
+        }
+        input[type="text"]:focus, input[type="url"]:focus, textarea:focus, select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102,126,234,0.1);
+        }
+        button {
+            background: #4338ca;
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1.05em;
+            font-weight: 600;
+            transition: all 0.3s;
+            margin-right: 10px;
+        }
+        button:hover { background: #3730a3; transform: translateY(-1px); box-shadow: 0 5px 12px rgba(67,56,202,0.25); }
+        .info-box {
+            background: #eef2ff;
+            border-left: 4px solid #4338ca;
+            padding: 15px 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            color: #444;
+        }
+        .result-box {
+            background: #f8f9fa;
+            padding: 15px 20px;
+            border-radius: 8px;
+            border: 2px dashed #d1d9ff;
+            font-family: 'Courier New', monospace;
+            word-break: break-all;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+        }
+        .copy-btn { background: #16a34a; padding: 10px 18px; border-radius: 6px; margin: 0; }
+        .copy-btn:hover { background: #15803d; }
+        .message {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 12px 18px;
+            border-radius: 10px;
+            color: white;
+            z-index: 9999;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            animation: slideIn 0.3s ease;
+        }
+        .message.success { background: #28a745; }
+        .message.error { background: #dc3545; }
+        @keyframes slideIn { from { transform: translateX(400px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        @media (max-width: 768px) {
+            nav .nav-container { flex-direction: column; gap: 15px; }
+            nav .nav-links { width: 100%; justify-content: center; }
+            .container { padding: 20px 15px; }
+            .card { padding: 25px 20px; }
+            .result-box { flex-direction: column; align-items: flex-start; }
+            .copy-btn { width: 100%; text-align: center; }
+        }
+    </style>
+</head>
+<body>
+    <nav>
+        <div class="nav-container">
+            <a href="/" class="logo">
+                <img src="/images/ScriptsSubConverter.png" alt="ScriptsSubConverter">
+                <span data-zh="订阅转换器" data-en="ScriptsSubConverter">订阅转换器</span>
+            </a>
+            <div class="nav-links">
+                <a class="nav-btn active" href="/index.html" data-zh="转换" data-en="Convert">转换</a>
+                <a class="nav-btn" href="/scripts.html" data-zh="脚本" data-en="Scripts">脚本</a>
+                <a class="nav-btn" href="/docs.html" data-zh="介绍" data-en="Docs">介绍</a>
+                <button class="lang-toggle" onclick="toggleLang()">中/EN</button>
+                <button class="logout-btn" onclick="logout()" data-zh="登出" data-en="Logout">登出</button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="card">
+            <h2 data-zh="📡 订阅转换" data-en="📡 Subscription Converter">📡 订阅转换</h2>
+            <div class="info-box">
+                <h3 data-zh="快速上手" data-en="Quick Start">快速上手</h3>
+                <p data-zh="选择处理脚本，输入原始订阅链接，即可生成转换后的订阅地址" data-en="Select a script, enter your subscription URL, and generate the converted link">选择处理脚本，输入原始订阅链接，即可生成转换后的订阅地址</p>
+            </div>
+
+            <div class="form-group">
+                <label data-zh="🎯 选择脚本" data-en="🎯 Select Script">🎯 选择脚本</label>
+                <select id="genScript">
+                    <option value="">-- 选择脚本 --</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label data-zh="🔗 原始订阅链接" data-en="🔗 Subscription URL">🔗 原始订阅链接</label>
+                <input type="url" id="genSub" placeholder="https://example.com/subscription" />
+            </div>
+
+            <div class="form-group">
+                <label data-zh="🌐 服务器地址 (可选)" data-en="🌐 Server URL (Optional)">🌐 服务器地址 (可选)</label>
+                <input type="url" id="genBaseUrl" data-zh-placeholder="留空自动使用当前地址" data-en-placeholder="Leave empty to use current URL" placeholder="留空自动使用当前地址" />
+            </div>
+
+            <div class="form-group">
+                <label data-zh="📦 编码方案" data-en="📦 Encoding">📦 编码方案</label>
+                <select id="genEncoding">
+                    <option value="url" data-zh="URL编码（普通）" data-en="URL encoding (Normal)">URL编码（普通）</option>
+                    <option value="base64" data-zh="Base64编码（避免HTTPS嵌套）" data-en="Base64 encoding (Avoid HTTPS nesting)">Base64编码（避免HTTPS嵌套）</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label data-zh="📄 文件名 (可选)" data-en="📄 Filename (Optional)">📄 文件名 (可选)</label>
+                <input type="text" id="genFilename" data-zh-placeholder="留空默认为 subscription.yaml" data-en-placeholder="Default: subscription.yaml" placeholder="留空默认为 subscription.yaml" />
+            </div>
+
+            <button onclick="generateLink()" data-zh="🚀 生成链接" data-en="🚀 Generate Link">🚀 生成链接</button>
+
+            <div id="result-container" style="margin-top: 30px; display: none;">
+                <h3 style="color: #333; margin-bottom: 15px;" data-zh="✅ 生成的链接" data-en="✅ Generated Link">✅ 生成的链接</h3>
+                <div class="result-box">
+                    <span id="generatedUrl"></span>
+                    <button class="copy-btn" onclick="copyToClipboard('generatedUrl')" data-zh="复制" data-en="Copy">复制</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = window.location.origin + '/api';
+
+        const i18nMessages = {
+            copied: { zh: '已选中文本，按 Ctrl+C 复制', en: 'Text selected, press Ctrl+C to copy' },
+            selectScript: { zh: '请选择脚本和输入订阅链接', en: 'Please select script and enter subscription URL' },
+            linkGenerated: { zh: '链接已生成！', en: 'Link generated!' },
+            linkFailed: { zh: '生成链接失败', en: 'Failed to generate link' }
+        };
+
+        function showMessage(message, type = 'success') {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${type}`;
+            const lang = localStorage.getItem('lang') || 'zh';
+            messageDiv.textContent = typeof message === 'object' ? message[lang] : message;
+            document.body.appendChild(messageDiv);
+            setTimeout(() => messageDiv.remove(), 3000);
+        }
+
+        function copyToClipboard(elementId) {
+            const el = document.getElementById(elementId);
+            if (!el) return;
+            const selection = window.getSelection();
+            const range = document.createRange();
+            range.selectNodeContents(el);
+            selection.removeAllRanges();
+            selection.addRange(range);
+            showMessage(i18nMessages.copied);
+        }
+
+        async function generateLink() {
+            const script = document.getElementById('genScript').value.trim();
+            const sub = document.getElementById('genSub').value.trim();
+            let baseUrl = document.getElementById('genBaseUrl').value.trim();
+            const encoding = document.getElementById('genEncoding').value;
+            const filename = document.getElementById('genFilename').value.trim();
+
+            if (!script || !sub) {
+                showMessage(i18nMessages.selectScript, 'error');
+                return;
+            }
+
+            if (!baseUrl) baseUrl = window.location.origin;
+            baseUrl = baseUrl.replace(/\/+$/, '');
+
+            try {
+                const params = {
+                    script: encodeURIComponent(script),
+                    sub: encodeURIComponent(sub)
+                };
+                if (filename) params.filename = encodeURIComponent(filename);
+
+                let url;
+                if (encoding === 'base64') {
+                    let queryString = `script=${params.script}&sub=${params.sub}`;
+                    if (params.filename) queryString += `&filename=${params.filename}`;
+                    const encoded = btoa(queryString);
+                    url = `${baseUrl}/convert?data=${encodeURIComponent(encoded)}`;
+                } else {
+                    url = `${baseUrl}/convert?script=${params.script}&sub=${params.sub}`;
+                    if (params.filename) url += `&filename=${params.filename}`;
+                }
+
+                document.getElementById('generatedUrl').textContent = url;
+                document.getElementById('result-container').style.display = 'block';
+                showMessage(i18nMessages.linkGenerated);
+            } catch (error) {
+                const lang = localStorage.getItem('lang') || 'zh';
+                const prefix = lang === 'zh' ? '生成链接失败: ' : 'Failed to generate link: ';
+                showMessage(prefix + error.message, 'error');
+            }
+        }
+
+        async function updateScriptSelect() {
+            try {
+                const response = await fetch(`${API_BASE}/scripts`);
+                const scripts = await response.json();
+                const select = document.getElementById('genScript');
+                const lang = localStorage.getItem('lang') || 'zh';
+                const defaultText = lang === 'zh' ? '-- 选择脚本 --' : '-- Select Script --';
+                select.innerHTML = `<option value="">${defaultText}</option>` +
+                    scripts.map(s => `<option value="${s.name}">${s.name}</option>`).join('');
+            } catch (error) {
+                console.error('更新脚本下拉菜单失败:', error);
+            }
+        }
+
+        window.addEventListener('DOMContentLoaded', updateScriptSelect);
+
+        // Language toggle
+        function toggleLang() {
+            const current = localStorage.getItem('lang') || 'zh';
+            const newLang = current === 'zh' ? 'en' : 'zh';
+            localStorage.setItem('lang', newLang);
+            applyLang(newLang);
+        }
+
+        function applyLang(lang) {
+            document.querySelectorAll('[data-zh]').forEach(el => {
+                const text = el.getAttribute(`data-${lang}`);
+                if (text && el.tagName !== 'INPUT' && el.tagName !== 'TEXTAREA' && el.tagName !== 'SELECT') {
+                    el.textContent = text;
+                }
+            });
+            document.querySelectorAll('[data-zh-placeholder]').forEach(el => {
+                const placeholder = el.getAttribute(`data-${lang}-placeholder`);
+                if (placeholder) el.placeholder = placeholder;
+            });
+            updateScriptSelect();
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            const lang = localStorage.getItem('lang') || 'zh';
+            if (lang === 'en') applyLang('en');
+        });
+
+        // 登出功能
+        async function logout() {
+            try {
+                await fetch('/api/logout', { method: 'POST' });
+                window.location.href = '/login';
+            } catch (error) {
+                console.error('Logout error:', error);
+                window.location.href = '/login';
+            }
+        }
+    </script>
+</body>
+</html>

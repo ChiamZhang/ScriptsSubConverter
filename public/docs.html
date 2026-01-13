@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/png" href="/images/ScriptsSubConverter.png">
+    <title>使用介绍</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f7fb;
+            min-height: 100vh;
+        }
+        nav {
+            background: #ffffff;
+            border-bottom: 1px solid #e5e7eb;
+            box-shadow: 0 6px 18px rgba(0,0,0,0.05);
+        }
+        nav .nav-container { max-width: 1200px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; padding: 15px 30px; }
+        nav .logo { color: #111827; font-size: 1.6em; font-weight: bold; display: flex; align-items: center; gap: 10px; text-decoration: none; }
+        nav .logo img { height: 40px; width: auto; border-radius: 6px; }
+        nav .nav-links { display: flex; gap: 15px; }
+        nav .nav-btn { background: transparent; color: #4b5563; border: none; padding: 10px 18px; border-radius: 8px; cursor: pointer; font-size: 0.95em; transition: all 0.2s; font-weight: 600; text-decoration: none; }
+        nav .nav-btn:hover { background: #eef2ff; color: #4338ca; transform: translateY(-1px); }
+        nav .nav-btn.active { background: #4338ca; color: #ffffff; }
+        .lang-toggle { background: #f3f4f6; color: #374151; padding: 6px 12px; border-radius: 6px; font-size: 0.85em; cursor: pointer; border: 1px solid #d1d5db; transition: all 0.2s; }
+        .lang-toggle:hover { background: #e5e7eb; }
+        .logout-btn { background: #dc3545; color: white; padding: 6px 12px; border-radius: 6px; font-size: 0.85em; cursor: pointer; border: none; transition: all 0.2s; margin-left: 8px; }
+        .logout-btn:hover { background: #c82333; }
+        .container { max-width: 960px; margin: 0 auto; padding: 40px 20px; }
+        .card { background: white; border-radius: 14px; padding: 36px; box-shadow: 0 12px 30px rgba(0,0,0,0.08); margin-bottom: 30px; border: 1px solid #e5e7eb; }
+        .card h2 { color: #333; margin-bottom: 25px; font-size: 2em; border-bottom: 3px solid #4338ca; padding-bottom: 15px; }
+        .intro-section { margin-bottom: 28px; }
+        .intro-section h3 { color: #333; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+        .intro-section p { color: #444; line-height: 1.6; margin-bottom: 8px; }
+        .intro-section ul { margin-left: 18px; color: #444; line-height: 1.6; }
+        .intro-section ol { margin-left: 18px; color: #444; line-height: 1.6; }
+        .intro-section li { margin-bottom: 6px; }
+        .code-example {
+            background: #0f172a;
+            color: #e5e7eb;
+            padding: 14px 16px;
+            border-radius: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.93em;
+            line-height: 1.55;
+            white-space: pre;
+            overflow: auto;
+            border: 1px solid #1e293b;
+        }
+        @media (max-width: 768px) { nav .nav-container { flex-direction: column; gap: 15px; } nav .nav-links { width: 100%; justify-content: center; } .container { padding: 20px 15px; } .card { padding: 25px 20px; } }
+    </style>
+</head>
+<body>
+    <nav>
+        <div class="nav-container">
+            <a href="/" class="logo">
+                <img src="/images/ScriptsSubConverter.png" alt="ScriptsSubConverter">
+                <span data-zh="订阅转换器" data-en="ScriptsSubConverter">订阅转换器</span>
+            </a>
+            <div class="nav-links">
+                <a class="nav-btn" href="/index.html" data-zh="转换" data-en="Convert">转换</a>
+                <a class="nav-btn" href="/scripts.html" data-zh="脚本" data-en="Scripts">脚本</a>
+                <a class="nav-btn active" href="/docs.html" data-zh="介绍" data-en="Docs">介绍</a>
+                <button class="lang-toggle" onclick="toggleLang()">中/EN</button>
+                <button class="logout-btn" onclick="logout()" data-zh="登出" data-en="Logout">登出</button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="card">
+            <h2 data-zh="📖 使用介绍" data-en="📖 Documentation">📖 使用介绍</h2>
+
+            <div class="intro-section">
+                <h3 data-zh="🚀 已实现功能" data-en="🚀 Implemented Features">🚀 已实现功能</h3>
+                <ul>
+                    <li data-zh="/convert：GET，必填 script/sub，可选 filename；支持 data=Base64 打包" data-en="/convert: GET endpoint, requires script/sub, optional filename; supports data=Base64">/convert：GET，必填 script/sub，可选 filename；支持 data=Base64 打包</li>
+                    <li data-zh="/api/scripts：列出、获取、保存（语法校验）、删除脚本" data-en="/api/scripts: list, get, save (with syntax check), delete scripts">/api/scripts：列出、获取、保存（语法校验）、删除脚本</li>
+                    <li data-zh="输出为 text/yaml，文件名用 RFC5987 编码，默认 subscription.yaml" data-en="Output is text/yaml, filename uses RFC5987, defaults to subscription.yaml">输出为 text/yaml，文件名用 RFC5987 编码，默认 subscription.yaml</li>
+                    <li data-zh="健康检查：/health 返回状态与时间戳" data-en="Health check: /health returns status and timestamp">健康检查：/health 返回状态与时间戳</li>
+                    <li data-zh="静态页面：转换/脚本管理/文档" data-en="Static pages: Convert/Scripts/Docs">静态页面：转换/脚本管理/文档</li>
+                </ul>
+            </div>
+
+            <div class="intro-section">
+                <h3 data-zh="📋 基本流程" data-en="📋 Basic Workflow">📋 基本流程</h3>
+                <ol>
+                    <li data-zh="在"脚本"页保存脚本（文本处理或 Clash 配置处理）" data-en="Save script in 'Scripts' page (text or Clash config processing)">在"脚本"页保存脚本（文本处理或 Clash 配置处理）</li>
+                    <li data-zh="在"转换"页选择脚本，输入订阅链接，可选文件名，生成链接" data-en="In 'Convert', select script, enter URL, optional filename, generate link">在"转换"页选择脚本，输入订阅链接，可选文件名，生成链接</li>
+                    <li data-zh="将生成的链接粘贴到 Clash 等客户端订阅地址" data-en="Paste generated link into Clash or other client">将生成的链接粘贴到 Clash 等客户端订阅地址</li>
+                </ol>
+            </div>
+
+            <div class="intro-section">
+                <h3 data-zh="⚙️ 参数说明" data-en="⚙️ Parameters">⚙️ 参数说明</h3>
+                <ul>
+                    <li data-zh="script：脚本名（对应 data/scripts/<name>.js）" data-en="script: script name (maps to data/scripts/<name>.js)">script：脚本名（对应 data/scripts/<name>.js）</li>
+                    <li data-zh="sub：原始订阅 URL（必填）" data-en="sub: original subscription URL (required)">sub：原始订阅 URL（必填）</li>
+                    <li data-zh="filename：导出文件名（可选，默认 subscription.yaml）" data-en="filename: export filename (optional, default subscription.yaml)">filename：导出文件名（可选，默认 subscription.yaml）</li>
+                    <li data-zh="data：可选，Base64 编码的查询串" data-en="data: optional, Base64 encoded query string">data：可选，Base64 编码的查询串</li>
+                </ul>
+            </div>
+
+            <div class="intro-section">
+                <h3 data-zh="🔐 编码方案" data-en="🔐 Encoding Options">🔐 编码方案</h3>
+                <ul>
+                    <li data-zh="URL 模式：/convert?script=xxx&sub=yyy[&filename=zzz]" data-en="URL mode: /convert?script=xxx&sub=yyy[&filename=zzz]">URL 模式：/convert?script=xxx&sub=yyy[&filename=zzz]</li>
+                    <li data-zh="Base64 模式：/convert?data=BASE64(queryString)，避免 HTTPS 嵌套" data-en="Base64 mode: /convert?data=BASE64(query), avoids HTTPS nesting">Base64 模式：/convert?data=BASE64(queryString)，避免 HTTPS 嵌套</li>
+                </ul>
+            </div>
+
+            <div class="intro-section">
+                <h3 data-zh="📝 脚本执行" data-en="📝 Script Execution">📝 脚本执行</h3>
+                <ul>
+                    <li data-zh="文本脚本：(content) => string，返回字符串" data-en="Text script: (content) => string, returns string">文本脚本：(content) => string，返回字符串</li>
+                    <li data-zh="Clash 脚本：main(config)，返回对象，自动转 YAML" data-en="Clash script: main(config), returns object, auto-converts to YAML">Clash 脚本：main(config)，返回对象，自动转 YAML</li>
+                    <li data-zh="判定：能解析为 YAML/JSON 则 Clash 模式，否则文本模式" data-en="Detection: parseable as YAML/JSON uses Clash mode, else text">判定：能解析为 YAML/JSON 则 Clash 模式，否则文本模式</li>
+                    <li data-zh="执行：new Function 在 Node 进程内，无沙箱，可用 require/fs" data-en="Execution: new Function in Node process, no sandbox, can use require/fs">执行：new Function 在 Node 进程内，无沙箱，可用 require/fs</li>
+                    <li data-zh="错误时回退原始内容" data-en="Falls back to original on error">错误时回退原始内容</li>
+                </ul>
+            </div>
+
+            <div class="intro-section">
+                <h3 data-zh="📦 预置脚本" data-en="📦 Preset Scripts">📦 预置脚本</h3>
+                <ul>
+                    <li data-zh="minify：去空行/注释，压缩文本订阅" data-en="minify: remove blanks/comments, compress text">minify：去空行/注释，压缩文本订阅</li>
+                    <li data-zh="ss-vmess-only：只保留 ss/vmess 协议" data-en="ss-vmess-only: keep only ss/vmess protocols">ss-vmess-only：只保留 ss/vmess 协议</li>
+                    <li data-zh="geo-priority：地区分组测速（HK/SG/JP/US），CN 直连" data-en="geo-priority: region groups (HK/SG/JP/US), CN direct">geo-priority：地区分组测速（HK/SG/JP/US），CN 直连</li>
+                    <li data-zh="acl-mini：极简分流，广告拒绝 + GFW 代理 + CN 直连" data-en="acl-mini: minimal routing, ad block + GFW proxy + CN direct">acl-mini：极简分流，广告拒绝 + GFW 代理 + CN 直连</li>
+                    <li data-zh="acl-lite：常规分流，含媒体/电报规则集" data-en="acl-lite: standard routing with media/telegram rulesets">acl-lite：常规分流，含媒体/电报规则集</li>
+                    <li data-zh="clash-full：注入基础规则、分组与在线规则提供者" data-en="clash-full: inject basic rules, groups and online providers">clash-full：注入基础规则、分组与在线规则提供者</li>
+                    <li data-zh="clash-pro：细分策略组与规则，含广告/隐私规则" data-en="clash-pro: refined groups and rules with ad/privacy">clash-pro：细分策略组与规则，含广告/隐私规则</li>
+                </ul>
+            </div>
+
+            <div class="intro-section">
+                <h3 data-zh="💡 常见问题" data-en="💡 FAQ">💡 常见问题</h3>
+                <ul>
+                    <li data-zh="拉取失败：HTTPS 嵌套或重定向时用 Base64 模式" data-en="Fetch fails: use Base64 mode for HTTPS nesting/redirects">拉取失败：HTTPS 嵌套或重定向时用 Base64 模式</li>
+                    <li data-zh="文件名乱码：填 filename，服务端使用 RFC5987" data-en="Filename encoding: set filename, server uses RFC5987">文件名乱码：填 filename，服务端使用 RFC5987</li>
+                    <li data-zh="脚本未生效：保存后刷新脚本下拉，重新生成链接" data-en="Script not working: refresh dropdown after save, regenerate link">脚本未生效：保存后刷新脚本下拉，重新生成链接</li>
+                    <li data-zh="安全性：脚本可访问 Node 全局和 fs/http，请自行评估" data-en="Security: scripts can access Node globals and fs/http, evaluate risks">安全性：脚本可访问 Node 全局和 fs/http，请自行评估</li>
+                </ul>
+            </div>
+
+            <div class="intro-section">
+                <h3 data-zh="🧩 参考文档" data-en="🧩 References">🧩 参考文档</h3>
+                <p>
+                    <span data-zh="规则写法参考" data-en="Rules reference">规则写法参考</span> 
+                    <a href="https://wiki.metacubex.one/config/rules/" target="_blank">Clash Mihomo</a>；
+                    <span data-zh="JS 语法参考" data-en="JavaScript syntax">JS 语法参考</span> 
+                    <a href="https://www.runoob.com/js/js-tutorial.html" target="_blank" data-zh="JavaScript 教程" data-en="Tutorial">JavaScript 教程</a>
+                </p>
+            </div>
+        </div>
+    </div>
+    <script>
+        function toggleLang() {
+            const current = localStorage.getItem('lang') || 'zh';
+            const newLang = current === 'zh' ? 'en' : 'zh';
+            localStorage.setItem('lang', newLang);
+            applyLang(newLang);
+        }
+
+        function applyLang(lang) {
+            document.querySelectorAll('[data-zh]').forEach(el => {
+                const text = el.getAttribute(`data-${lang}`);
+                if (text) {
+                    if (el.tagName === 'SPAN' || el.tagName === 'A') {
+                        // 只更新文本节点，保留子元素
+                        if (el.childNodes.length === 1 && el.childNodes[0].nodeType === 3) {
+                            el.textContent = text;
+                        }
+                    } else {
+                        el.textContent = text;
+                    }
+                }
+            });
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            const lang = localStorage.getItem('lang') || 'zh';
+            if (lang === 'en') applyLang('en');
+        });
+
+        // 登出功能
+        async function logout() {
+            try {
+                await fetch('/api/logout', { method: 'POST' });
+                window.location.href = '/login';
+            } catch (error) {
+                console.error('Logout error:', error);
+                window.location.href = '/login';
+            }
+        }
+    </script>
+</body>
+</html>

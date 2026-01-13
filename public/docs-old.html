@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>使用介绍</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+          font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+          background: #f5f7fb;
+          min-height: 100vh;
+        }
+        nav {
+          background: #ffffff;
+          border-bottom: 1px solid #e5e7eb;
+          box-shadow: 0 6px 18px rgba(0,0,0,0.05);
+        }
+        nav .nav-container { max-width: 1200px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; padding: 15px 30px; }
+        nav .logo { color: #111827; font-size: 1.6em; font-weight: bold; display: flex; align-items: center; gap: 10px; }
+        nav .nav-links { display: flex; gap: 15px; }
+        nav .nav-btn { background: transparent; color: #4b5563; border: none; padding: 10px 18px; border-radius: 8px; cursor: pointer; font-size: 0.95em; transition: all 0.2s; font-weight: 600; text-decoration: none; }
+        nav .nav-btn:hover { background: #eef2ff; color: #4338ca; transform: translateY(-1px); }
+        nav .nav-btn.active { background: #4338ca; color: #ffffff; }
+        .lang-toggle { background: #f3f4f6; color: #374151; padding: 6px 12px; border-radius: 6px; font-size: 0.85em; cursor: pointer; border: 1px solid #d1d5db; transition: all 0.2s; }
+        .lang-toggle:hover { background: #e5e7eb; }
+        .container { max-width: 960px; margin: 0 auto; padding: 40px 20px; }
+        .card { background: white; border-radius: 14px; padding: 36px; box-shadow: 0 12px 30px rgba(0,0,0,0.08); margin-bottom: 30px; border: 1px solid #e5e7eb; }
+        .card h2 { color: #333; margin-bottom: 25px; font-size: 2em; border-bottom: 3px solid #4338ca; padding-bottom: 15px; }
+        .intro-section { margin-bottom: 28px; }
+        .intro-section h3 { color: #333; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+        .intro-section p { color: #444; line-height: 1.6; margin-bottom: 8px; }
+        .intro-section ul { margin-left: 18px; color: #444; line-height: 1.6; }
+        .intro-section ol { margin-left: 18px; color: #444; line-height: 1.6; }
+        .code-example {
+            background: #0f172a;
+            color: #e5e7eb;
+            padding: 14px 16px;
+            border-radius: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.93em;
+            line-height: 1.55;
+            white-space: pre;
+            overflow: auto;
+            border: 1px solid #1e293b;
+        }
+        table { border-collapse: collapse; width: 100%; font-size: 0.95em; }
+        th, td { border: 1px solid #ddd; padding: 8px 10px; text-align: left; }
+        th { background: #f7f7f7; }
+        @media (max-width: 768px) { nav .nav-container { flex-direction: column; gap: 15px; } nav .nav-links { width: 100%; justify-content: center; } .container { padding: 20px 15px; } .card { padding: 25px 20px; } }
+    </style>
+</head>
+<body>
+    <nav>
+        <div class="nav-container">
+            <div class="logo">🔗<span data-zh="Chiam's 订阅转换" data-en="Chiam's Sub Converter">Chiam's 订阅转换</span></div>
+            <div class="nav-links">
+                <a class="nav-btn" href="/index.html" data-zh="转换" data-en="Convert">转换</a>
+                <a class="nav-btn" href="/scripts.html" data-zh="脚本" data-en="Scripts">脚本</a>
+                <a class="nav-btn active" href="/docs.html" data-zh="介绍" data-en="Docs">介绍</a>
+                <button class="lang-toggle" onclick="toggleLang()">中/EN</button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="card">
+            <h2 data-zh="📖 使用介绍" data-en="📖 Documentation">📖 使用介绍</h2>
+
+            <div class="intro-section">
+                <h3 data-zh="🚀 已实现功能" data-en="🚀 Implemented Features">🚀 已实现功能</h3>
+                <ul>
+                    <li>/convert：GET，必填 script/sub，可选 filename；支持 data=Base64 打包 script/sub/filename</li>
+                    <li>/api/scripts：列出、获取、保存（语法校验后落盘）、删除 data/scripts/*.js</li>
+                    <li>输出一律为 text/yaml，文件名用 RFC5987 编码，默认 subscription.yaml</li>
+                    <li>健康检查：/health 返回状态与时间戳</li>
+                    <li>静态页面：index.html（生成链接）、scripts.html（脚本管理）、docs.html（说明）</li>
+                </ul>
+            </div>
+
+            <div class="intro-section">
+                <h3>📋 基本流程</h3>
+                <ol>
+                    <li>在“脚本”页保存脚本（文本处理或 Clash 配置处理）</li>
+                    <li>在“转换”页选择脚本，输入订阅链接，可选文件名，生成链接</li>
+                    <li>将生成的 /convert 链接粘贴到 Clash 等客户端订阅地址中</li>
+                </ol>
+            </div>
+
+            <div class="intro-section">
+                <h3>⚙️ 参数说明</h3>
+                <ul>
+                    <li>script：脚本名（对应 data/scripts/<name>.js）</li>
+                    <li>sub：原始订阅 URL（必填，建议先测试可直接访问）</li>
+                    <li>filename：导出文件名（可选，默认 subscription.yaml）</li>
+                    <li>data：可选，将 script/sub/filename 组成查询串后再 Base64 和 URL 编码</li>
+                </ul>
+            </div>
+
+            <div class="intro-section">
+                <h3>🔐 编码方案</h3>
+                <ul>
+                    <li>URL 模式：/convert?script=xxx&sub=yyy[&filename=zzz]</li>
+                    <li>Base64 模式：/convert?data=BASE64(queryString)，用于避免 HTTPS 订阅嵌套</li>
+                </ul>
+            </div>
+
+            <div class="intro-section">
+                <h3>🌐 调用格式</h3>
+                <p><strong>URL 模式：</strong></p>
+                <div class="code-example">http://your-domain:3005/convert?script=脚本名&sub=原始订阅URL&filename=配置.yaml</div>
+                <p><strong>Base64 模式：</strong></p>
+                <div class="code-example">http://your-domain:3005/convert?data=BASE64( script=脚本名&sub=原始订阅URL&filename=配置.yaml )</div>
+                <p style="margin-top: 12px; color: #666;">Base64 结果再做 URL 编码后放入 data；filename 可省略。</p>
+            </div>
+
+            <div class="intro-section">
+                <h3>📝 脚本执行与返回值</h3>
+                <ul>
+                    <li>文本脚本：函数签名 (content) => string，返回字符串</li>
+                    <li>Clash 脚本：函数签名 main(config)，返回对象，自动转 YAML</li>
+                    <li>判定逻辑：能被 YAML/JSON 解析则按 Clash 模式调用 main；否则按文本模式</li>
+                    <li>执行方式：new Function 在同一 Node 进程内运行，未做沙箱隔离；require/Buffer/fs 等 Node 全局可用</li>
+                    <li>错误回退：脚本抛错或解析失败会回退原始订阅内容</li>
+                </ul>
+                <p><strong>示例1 - 纯文本订阅清理</strong></p>
+                <div class="code-example">// 移除空行和注释
+return content.split('\n')
+  .filter(line => line.trim() && !line.startsWith('#'))
+  .join('\n');</div>
+                <p><strong>示例2 - Clash 配置加工</strong></p>
+                <div class="code-example">function main(config) {
+  config.proxies = (config.proxies || []).filter(p => p.name && !p.name.includes('过期'));
+  config['proxy-groups'] = config['proxy-groups'] || [];
+  config['proxy-groups'].push({ name: '节点选择', type: 'select', proxies: (config.proxies || []).map(p => p.name) });
+  config.rules = config.rules || [];
+  config.rules.unshift('DOMAIN-SUFFIX,example.com,节点选择');
+  return config;
+}</div>
+            </div>
+
+            <div class="intro-section">
+                <h3>🧭 Clash 处理要点</h3>
+                <ul>
+                    <li>务必返回完整的配置对象（保留原有字段，按需修改）</li>
+                    <li>修改列表前先兜底：config.rules = config.rules || [];</li>
+                    <li>新增字段直接挂在 config 上，YAML 会自动生成</li>
+                    <li>不会保留原始 YAML 注释</li>
+                </ul>
+            </div>
+
+            <div class="intro-section">
+                <h3>📦 预置脚本</h3>
+                <ul>
+                    <li>minify：去空行/注释，压缩文本订阅</li>
+                    <li>ss-vmess-only：只保留 ss:// 与 vmess://，附加统计注释</li>
+                    <li>geo-priority：按地区分组测速（港/新/日/美），国行直连兜底</li>
+                    <li>acl-mini：极简分流，广告拒绝 + GFW 代理 + 中国域名直连</li>
+                    <li>acl-lite：常规分流，含媒体/电报规则集与基础策略组</li>
+                    <li>clash-full：注入基础规则、分组与在线规则提供者，适合常规分流</li>
+                    <li>clash-pro：更细分的策略组与规则，含广告/隐私规则与示例节点注入</li>
+                </ul>
+            </div>
+
+            <div class="intro-section">
+                <h3>💡 常见问题</h3>
+                <ul>
+                    <li>拉取失败：HTTPS 嵌套或订阅有重定向时，用 Base64 模式</li>
+                    <li>文件名乱码：填 filename；服务端使用 RFC5987 处理导出名</li>
+                    <li>脚本未生效：保存后在“转换”页刷新脚本下拉，再重新生成链接</li>
+                    <li>安全性：脚本可访问 Node 全局与 fs/http/https，请自行评估与限制</li>
+                </ul>
+            </div>
+
+            <div class="intro-section">
+                <h3>🧩 规则与脚本参考</h3>
+                <p>规则写法参考 <a href="https://wiki.metacubex.one/config/rules/" target="_blank">Clash Mihomo 文档</a>；JS 语法可参考 <a href="https://www.runoob.com/js/js-tutorial.html" target="_blank">JavaScript 教程</a>。</p>
+            </div>
+        </div>
+    </div>
+    <script>
+        // Language toggle
+        function toggleLang() {
+            const current = localStorage.getItem('lang') || 'zh';
+            const newLang = current === 'zh' ? 'en' : 'zh';
+            localStorage.setItem('lang', newLang);
+            applyLang(newLang);
+        }
+
+        function applyLang(lang) {
+            document.querySelectorAll('[data-zh]').forEach(el => {
+                el.textContent = el.getAttribute(`data-${lang}`) || el.textContent;
+            });
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            const lang = localStorage.getItem('lang') || 'zh';
+            if (lang === 'en') applyLang('en');
+        });
+    </script>
+</body>
+</html>
