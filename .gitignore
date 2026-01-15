@@ -12,4 +12,5 @@ build/
 *.swo
 data/scripts/myscript.js
 /home/chiam/Application/SubConverter/.env
-data/scripts/laqweqwlejasdfsdfjqquwheqweqweqwfasdf123123123d.js
+
+data/scripts/*hidden*.js

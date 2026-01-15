@@ -135,6 +135,19 @@ app.get('/api/scripts', (req, res) => {
       const code = fs.readFileSync(path.join(scriptsDir, f), 'utf8');
       return { name, code };
     });
+    
+    // 检查是否是来自网页的请求
+    const referer = req.headers.referer || '';
+    // 如果 referer 中包含 .html 或者是主页路径，说明是网页访问
+    const isWebPageRequest = referer.includes('.html') || referer.endsWith('/');
+    
+    if (isWebPageRequest) {
+      // 仃正网页访问：过滤掉包含 'hidden' 的脚本
+      const filtered = scripts.filter(s => !s.name.toLowerCase().includes('hidden'));
+      return res.json(filtered);
+    }
+    
+    // 纯 API 调用（没有 referer 或是 programmatic 调用）：返回所有脚本
     res.json(scripts);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -144,12 +157,23 @@ app.get('/api/scripts', (req, res) => {
 // 获取单个脚本
 app.get('/api/scripts/:name', (req, res) => {
   try {
-    const filePath = path.join(scriptsDir, `${req.params.name}.js`);
+    const scriptName = req.params.name;
+    const filePath = path.join(scriptsDir, `${scriptName}.js`);
+    
+    // 检查是否是网页访问
+    const referer = req.headers.referer || '';
+    const isWebPageRequest = referer.includes('.html') || referer.endsWith('/');
+    
+    if (isWebPageRequest && scriptName.toLowerCase().includes('hidden')) {
+      // 网页访问 hidden 脚本：拒绝
+      return res.status(403).json({ error: '禁止访问此脚本' });
+    }
+    
     if (!fs.existsSync(filePath)) {
       return res.status(404).json({ error: '脚本不存在' });
     }
     const code = fs.readFileSync(filePath, 'utf8');
-    res.json({ name: req.params.name, code });
+    res.json({ name: scriptName, code });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
