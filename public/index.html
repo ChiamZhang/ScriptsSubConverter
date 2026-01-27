@@ -182,7 +182,7 @@
 
             <div class="form-group">
                 <label data-zh="🎯 选择脚本" data-en="🎯 Select Script">🎯 选择脚本</label>
-                <select id="genScript" onchange="onScriptChange()">
+                <select id="genScript" onchange="onScriptChange('genScript','genScriptDesc')">
                     <option value="">-- 选择脚本 --</option>
                 </select>
                 <div id="genScriptDesc" class="info-box" style="display:none;margin-top:10px;"></div>
@@ -230,6 +230,72 @@
                 </div>
             </div>
         </div>
+
+        <div class="card">
+            <h2 data-zh="🛡️ 本地文件转换" data-en="🛡️ Local File Convert">🛡️ 本地文件转换</h2>
+            <div class="info-box">
+                <h3 data-zh="隐私保护" data-en="Privacy First">隐私保护</h3>
+                <p data-zh="上传的配置仅通过 Base64 发送到服务器内存，不会被拉取或落盘；可下载或生成本地 Base64 链接，均不存盘" data-en="Config goes as Base64, processed in-memory; you can download or make a local Base64 link—no disk writes">上传的配置仅通过 Base64 发送到服务器内存，不会被拉取或落盘；可下载或生成本地 Base64 链接，均不存盘</p>
+            </div>
+
+            <div class="form-group">
+                <label data-zh="🎯 选择脚本" data-en="🎯 Select Script">🎯 选择脚本</label>
+                <select id="uploadScript" onchange="onScriptChange('uploadScript','uploadScriptDesc')">
+                    <option value="">-- 选择脚本 --</option>
+                </select>
+                <div id="uploadScriptDesc" class="info-box" style="display:none;margin-top:10px;"></div>
+            </div>
+
+            <div class="form-group">
+                <label data-zh="📁 选择本地配置" data-en="📁 Choose Local Config">📁 选择本地配置</label>
+                <input type="file" id="uploadFile" accept=".yaml,.yml,.conf,.txt,.json,application/*,text/*" />
+            </div>
+
+            <div class="form-group" style="display:flex; align-items:center; gap:8px;">
+                <input type="checkbox" id="proxiesOnly" style="width:auto;" />
+                <label for="proxiesOnly" style="margin:0;" data-zh="仅保留节点（缩短链接/增强隐私）" data-en="Keep proxies only (shorter/private)">仅保留节点（缩短链接/增强隐私）</label>
+            </div>
+
+            <div class="form-group">
+                <label data-zh="📄 输出文件名 (可选)" data-en="📄 Output Filename (Optional)">📄 输出文件名 (可选)</label>
+                <input type="text" id="uploadFilename" data-zh-placeholder="默认沿用原文件或 subscription.yaml" data-en-placeholder="Default: source name or subscription.yaml" placeholder="默认沿用原文件或 subscription.yaml" />
+            </div>
+
+            <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+                <button onclick="convertLocalFile()" data-zh="🔒 上传并转换 (下载)" data-en="🔒 Upload & Convert (Download)">🔒 上传并转换 (下载)</button>
+                <button onclick="generateBase64LinkFromFile()" data-zh="🔗 生成 Base64 链接" data-en="🔗 Make Base64 Link">🔗 生成 Base64 链接</button>
+                <button onclick="generateShortLinkFromFile()" data-zh="✨ 生成短链接" data-en="✨ Make Short Link">✨ 生成短链接</button>
+                <span style="color:#6b7280; font-size:0.9em;" data-zh="Blob 下载完全不落盘；链接可能很长，推荐生成短链接" data-en="Blob download never stores; links may be long, short link recommended">Blob 下载完全不落盘；链接可能很长，推荐生成短链接</span>
+            </div>
+
+            <div id="upload-result" style="margin-top: 20px; display: none;">
+                <h3 style="color: #333; margin-bottom: 12px;" data-zh="✅ 已生成文件" data-en="✅ File Ready">✅ 已生成文件</h3>
+                <div class="result-box">
+                    <a id="uploadDownloadLink" href="#" download style="word-break: break-all; color: #4338ca;">&nbsp;</a>
+                    <button class="copy-btn" onclick="copyToClipboard('uploadDownloadLink')" data-zh="复制" data-en="Copy">复制</button>
+                </div>
+            </div>
+
+            <div id="upload-link-result" style="margin-top: 16px; display: none;">
+                <h3 style="color: #333; margin-bottom: 12px;" data-zh="✅ Base64 链接" data-en="✅ Base64 Link">✅ Base64 链接</h3>
+                <div class="result-box" style="flex-direction: column; align-items: flex-start; gap: 8px;">
+                    <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                        <button class="copy-btn" onclick="copyToClipboard('uploadGeneratedLink')" data-zh="复制链接" data-en="Copy Link">复制链接</button>
+                        <span id="uploadLinkLength" style="color:#374151; font-size:0.9em;">长度: --</span>
+                        <span id="uploadLinkWarn" style="display:none; color:#b91c1c; font-size:0.9em;" data-zh="⚠️ 超过 2KB，部分客户端可能拒绝" data-en="⚠️ Over 2KB, some clients may reject">⚠️ 超过 2KB，部分客户端可能拒绝</span>
+                    </div>
+                    <span id="uploadGeneratedLink" style="word-break: break-all;"></span>
+                </div>
+            </div>
+
+            <div id="upload-short-result" style="margin-top: 16px; display: none;">
+                <h3 style="color: #333; margin-bottom: 12px;" data-zh="✨ Base64 短链接" data-en="✨ Base64 Short Link">✨ Base64 短链接</h3>
+                <div class="result-box">
+                    <span id="uploadShortUrl" style="word-break: break-all;"></span>
+                    <button class="copy-btn" onclick="copyToClipboard('uploadShortUrl')" data-zh="复制" data-en="Copy">复制</button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -241,7 +307,13 @@
             linkGenerated: { zh: '链接已生成！', en: 'Link generated!' },
             linkFailed: { zh: '生成链接失败', en: 'Failed to generate link' },
             shortLinkGenerated: { zh: '短链接已生成！', en: 'Short link generated!' },
-            shortLinkFailed: { zh: '生成短链接失败', en: 'Failed to generate short link' }
+            shortLinkFailed: { zh: '生成短链接失败', en: 'Failed to generate short link' },
+            selectFile: { zh: '请选择脚本并选择本地文件', en: 'Please choose a script and select a local file' },
+            uploadSuccess: { zh: '转换完成，已开始下载', en: 'Converted and download started' },
+            uploadFailed: { zh: '转换失败', en: 'Conversion failed' },
+            linkFromFileSuccess: { zh: '链接已生成（可能较长）', en: 'Link generated (may be long)' },
+            proxiesOnlyHint: { zh: '仅保留节点（缩短/隐私）', en: 'Keep proxies only (shorter/private)' },
+            stripFailed: { zh: '精简节点失败', en: 'Strip to proxies failed' }
         };
 
         function showMessage(message, type = 'success') {
@@ -387,17 +459,20 @@
             try {
                 const response = await fetch(`${API_BASE}/scripts`);
                 const scripts = await response.json();
-                const select = document.getElementById('genScript');
                 const lang = localStorage.getItem('lang') || 'zh';
-                select.innerHTML = renderScriptOptions(scripts, lang);
+                const genSelect = document.getElementById('genScript');
+                const uploadSelect = document.getElementById('uploadScript');
+                if (genSelect) genSelect.innerHTML = renderScriptOptions(scripts, lang);
+                if (uploadSelect) uploadSelect.innerHTML = renderScriptOptions(scripts, lang);
             } catch (error) {
                 console.error('更新脚本下拉菜单失败:', error);
             }
         }
 
-        function onScriptChange() {
-            const select = document.getElementById('genScript');
-            const descBox = document.getElementById('genScriptDesc');
+        function onScriptChange(selectId, descId) {
+            const select = document.getElementById(selectId);
+            const descBox = document.getElementById(descId);
+            if (!select || !descBox) return;
             const option = select.options[select.selectedIndex];
             const lang = localStorage.getItem('lang') || 'zh';
             let desc = option ? option.getAttribute('data-desc') : '';
@@ -411,6 +486,207 @@
             } else {
                 descBox.style.display = 'none';
                 descBox.textContent = '';
+            }
+        }
+
+        function readFileAsBase64(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => {
+                    const result = reader.result || '';
+                    const commaIndex = result.indexOf(',');
+                    resolve(commaIndex >= 0 ? result.slice(commaIndex + 1) : result);
+                };
+                reader.onerror = () => reject(reader.error || new Error('文件读取失败'));
+                reader.readAsDataURL(file);
+            });
+        }
+
+        async function convertLocalFile() {
+            const script = document.getElementById('uploadScript').value.trim();
+            const fileInput = document.getElementById('uploadFile');
+            const file = fileInput && fileInput.files ? fileInput.files[0] : null;
+            const customName = document.getElementById('uploadFilename').value.trim();
+            const proxiesOnly = document.getElementById('proxiesOnly')?.checked;
+
+            if (!script || !file) {
+                showMessage(i18nMessages.selectFile, 'error');
+                return;
+            }
+
+            try {
+                const base64 = await readFileAsBase64(file);
+                const response = await fetch('/convert/upload', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        script,
+                        contentBase64: base64,
+                        filename: customName || undefined,
+                        proxiesOnly: !!proxiesOnly
+                    })
+                });
+
+                if (!response.ok) {
+                    const err = await response.json().catch(() => ({}));
+                    throw new Error(err.error || 'Request failed');
+                }
+
+                const blob = await response.blob();
+                const disposition = response.headers.get('content-disposition') || '';
+                const match = disposition.match(/filename\*=UTF-8''([^;]+)/);
+                let downloadName = customName || file.name || 'subscription.yaml';
+                if (match && match[1]) {
+                    try { downloadName = decodeURIComponent(match[1]); } catch (e) { /* ignore */ }
+                }
+
+                const url = URL.createObjectURL(blob);
+                const link = document.getElementById('uploadDownloadLink');
+                if (link) {
+                    if (link.href && link.href.startsWith('blob:')) {
+                        URL.revokeObjectURL(link.href);
+                    }
+                    link.href = url;
+                    link.download = downloadName;
+                    link.textContent = downloadName;
+                }
+                const container = document.getElementById('upload-result');
+                if (container) container.style.display = 'block';
+
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = downloadName;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                setTimeout(() => URL.revokeObjectURL(url), 120000);
+
+                showMessage(i18nMessages.uploadSuccess);
+            } catch (error) {
+                const lang = localStorage.getItem('lang') || 'zh';
+                const prefix = lang === 'zh' ? '转换失败: ' : 'Convert failed: ';
+                showMessage(prefix + error.message, 'error');
+            }
+        }
+
+        async function generateBase64LinkFromFile() {
+            const script = document.getElementById('uploadScript').value.trim();
+            const fileInput = document.getElementById('uploadFile');
+            const file = fileInput && fileInput.files ? fileInput.files[0] : null;
+            const customName = document.getElementById('uploadFilename').value.trim();
+            const proxiesOnly = document.getElementById('proxiesOnly')?.checked;
+
+            if (!script || !file) {
+                showMessage(i18nMessages.selectFile, 'error');
+                return;
+            }
+
+            try {
+                let base64 = await readFileAsBase64(file);
+
+                if (proxiesOnly) {
+                    try {
+                        const resp = await fetch('/api/strip-proxies', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ contentBase64: base64 })
+                        });
+                        if (!resp.ok) {
+                            const err = await resp.json().catch(() => ({}));
+                            throw new Error(err.error || 'strip failed');
+                        }
+                        const data = await resp.json();
+                        base64 = data.contentBase64;
+                    } catch (e) {
+                        showMessage(i18nMessages.stripFailed, 'error');
+                        return;
+                    }
+                }
+
+                const filenameParam = customName ? `&filename=${encodeURIComponent(customName)}` : '';
+                const proxiesParam = proxiesOnly ? '&proxiesOnly=1' : '';
+                const url = `${window.location.origin}/convert?script=${encodeURIComponent(script)}&context=${encodeURIComponent(base64)}${filenameParam}${proxiesParam}`;
+                const linkSpan = document.getElementById('uploadGeneratedLink');
+                if (linkSpan) {
+                    linkSpan.textContent = url;
+                }
+                const container = document.getElementById('upload-link-result');
+                if (container) container.style.display = 'block';
+                const lenSpan = document.getElementById('uploadLinkLength');
+                if (lenSpan) {
+                    const lang = localStorage.getItem('lang') || 'zh';
+                    const label = lang === 'en' ? 'Length' : '长度';
+                    lenSpan.textContent = `${label}: ${url.length} chars`;
+                }
+                const warn = document.getElementById('uploadLinkWarn');
+                if (warn) warn.style.display = url.length > 2000 ? 'inline' : 'none';
+                showMessage(i18nMessages.linkFromFileSuccess);
+            } catch (error) {
+                const lang = localStorage.getItem('lang') || 'zh';
+                const prefix = lang === 'zh' ? '生成链接失败: ' : 'Generate link failed: ';
+                showMessage(prefix + error.message, 'error');
+            }
+        }
+
+        async function generateShortLinkFromFile() {
+            const script = document.getElementById('uploadScript').value.trim();
+            const fileInput = document.getElementById('uploadFile');
+            const file = fileInput && fileInput.files ? fileInput.files[0] : null;
+            const customName = document.getElementById('uploadFilename').value.trim();
+            const proxiesOnly = document.getElementById('proxiesOnly')?.checked;
+
+            if (!script || !file) {
+                showMessage(i18nMessages.selectFile, 'error');
+                return;
+            }
+
+            try {
+                let base64 = await readFileAsBase64(file);
+
+                if (proxiesOnly) {
+                    try {
+                        const resp = await fetch('/api/strip-proxies', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ contentBase64: base64 })
+                        });
+                        if (!resp.ok) {
+                            const err = await resp.json().catch(() => ({}));
+                            throw new Error(err.error || 'strip failed');
+                        }
+                        const data = await resp.json();
+                        base64 = data.contentBase64;
+                    } catch (e) {
+                        showMessage(i18nMessages.stripFailed, 'error');
+                        return;
+                    }
+                }
+
+                const filenameParam = customName ? `&filename=${encodeURIComponent(customName)}` : '';
+                const proxiesParam = proxiesOnly ? '&proxiesOnly=1' : '';
+                const fullUrl = `${window.location.origin}/convert?script=${encodeURIComponent(script)}&context=${encodeURIComponent(base64)}${filenameParam}${proxiesParam}`;
+
+                const response = await fetch(`${API_BASE}/shortlink`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url: fullUrl })
+                });
+
+                if (!response.ok) {
+                    const err = await response.json().catch(() => ({}));
+                    throw new Error(err.error || 'Request failed');
+                }
+
+                const result = await response.json();
+                const shortSpan = document.getElementById('uploadShortUrl');
+                if (shortSpan) shortSpan.textContent = result.shortUrl;
+                const container = document.getElementById('upload-short-result');
+                if (container) container.style.display = 'block';
+                showMessage(i18nMessages.shortLinkGenerated);
+            } catch (error) {
+                const lang = localStorage.getItem('lang') || 'zh';
+                const prefix = lang === 'zh' ? '生成短链接失败: ' : 'Short link failed: ';
+                showMessage(prefix + error.message, 'error');
             }
         }
 
