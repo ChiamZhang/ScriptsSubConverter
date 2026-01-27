@@ -81,8 +81,8 @@ To protect your scripts from unauthorized access, you can enable password authen
 
 ### UI
 
-![alt text](https://raw.githubusercontent.com/ChiamZhang/ScriptsSubConverter/main/public/images/image.png)
-![alt text](https://raw.githubusercontent.com/ChiamZhang/ScriptsSubConverter/main/public/images/image2.png)
+![alt text](https://raw.githubusercontent.com/ChiamZhang/ScriptsSubConverter/main/public/images/image3.png)
+![alt text](https://raw.githubusercontent.com/ChiamZhang/ScriptsSubConverter/main/public/images/image4.png)
 
 ### Usage
 
