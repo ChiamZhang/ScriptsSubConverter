@@ -177,9 +177,10 @@
 
             <div class="form-group">
                 <label data-zh="🎯 选择脚本" data-en="🎯 Select Script">🎯 选择脚本</label>
-                <select id="genScript">
+                <select id="genScript" onchange="onScriptChange()">
                     <option value="">-- 选择脚本 --</option>
                 </select>
+                <div id="genScriptDesc" class="info-box" style="display:none;margin-top:10px;"></div>
             </div>
 
             <div class="form-group">
@@ -366,17 +367,45 @@
             }
         }
 
+        function renderScriptOptions(scripts, lang) {
+            const defaultText = lang === 'zh' ? '-- 选择脚本 --' : '-- Select Script --';
+            return `<option value="">${defaultText}</option>` + scripts.map(s => {
+                const descZh = s.descriptionZh || '';
+                const descEn = s.descriptionEn || '';
+                const desc = s.description || '';
+                const descForLang = lang === 'en' ? (descEn || descZh || desc) : (descZh || descEn || desc);
+                return `<option value="${s.name}" data-desc="${(descForLang || '').replace(/"/g, '&quot;')}" data-desc-zh="${(descZh || '').replace(/"/g, '&quot;')}" data-desc-en="${(descEn || '').replace(/"/g, '&quot;')}">${s.name}</option>`;
+            }).join('');
+        }
+
         async function updateScriptSelect() {
             try {
                 const response = await fetch(`${API_BASE}/scripts`);
                 const scripts = await response.json();
                 const select = document.getElementById('genScript');
                 const lang = localStorage.getItem('lang') || 'zh';
-                const defaultText = lang === 'zh' ? '-- 选择脚本 --' : '-- Select Script --';
-                select.innerHTML = `<option value="">${defaultText}</option>` +
-                    scripts.map(s => `<option value="${s.name}">${s.name}</option>`).join('');
+                select.innerHTML = renderScriptOptions(scripts, lang);
             } catch (error) {
                 console.error('更新脚本下拉菜单失败:', error);
+            }
+        }
+
+        function onScriptChange() {
+            const select = document.getElementById('genScript');
+            const descBox = document.getElementById('genScriptDesc');
+            const option = select.options[select.selectedIndex];
+            const lang = localStorage.getItem('lang') || 'zh';
+            let desc = option ? option.getAttribute('data-desc') : '';
+            const descZh = option ? option.getAttribute('data-desc-zh') : '';
+            const descEn = option ? option.getAttribute('data-desc-en') : '';
+            if (lang === 'en' && (descEn || desc)) desc = descEn || desc;
+            if (lang === 'zh' && (descZh || desc)) desc = descZh || desc;
+            if (desc) {
+                descBox.style.display = 'block';
+                descBox.textContent = desc;
+            } else {
+                descBox.style.display = 'none';
+                descBox.textContent = '';
             }
         }
 

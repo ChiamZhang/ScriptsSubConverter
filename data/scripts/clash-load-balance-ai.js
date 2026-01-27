@@ -1,6 +1,11 @@
-// Clash 完整分流配置脚本
-// 功能：完整的在线规则集配置，包含广告拦截、应用分流、流媒体服务、AI 平台等全面的分流规则和策略组
-// 适用：Mihomo/Clash.Meta 核心，适合需要详细分流控制的用户
+// Clash 负载均衡完整配置脚本 - AI 分离版
+// 功能：完整的负载均衡配置，包含自动选择、散列、轮询三种模式，支持地区分组，AI 服务分为 ChatGPT、Gemini、Copilot、其他AI 四个独立策略组
+// 适用：Mihomo/Clash.Meta 核心，适合需要对不同 AI 平台单独配置节点的用户
+
+// =========================================================
+// Clash 负载均衡完整配置脚本（AI 分离版）
+// 适用于 Mihomo/Clash.Meta 核心
+// =========================================================
 
 // =========================================================
 // 1. 在线规则集配置
@@ -51,7 +56,7 @@ const remoteProviders = {
 };
 
 // =========================================================
-// 2. AI 平台专用规则（保留本地控制）
+// 2. AI 平台专用规则（分离版）
 // =========================================================
 const aiRules = [
   // ChatGPT
@@ -84,53 +89,27 @@ const aiRules = [
 // =========================================================
 function main(config) {
   const proxies = config.proxies || [];
-
-  // 手动注入：网易音乐专用节点
-  const neteaseOnlyProxyNames = ["🎶 网易音乐 HTTP"];
-  const neteaseOnlyProxyNameSet = new Set(neteaseOnlyProxyNames);
-
-  const ensureProxyExists = (proxy) => {
-    if (!proxy || !proxy.name) return;
-    if (proxies.some(p => p && p.name === proxy.name)) return;
-    proxies.push(proxy);
-  };
-
-  // 手动注入：网易音乐 HTTP 代理
-  ensureProxyExists({
-    name: "🎶 网易音乐 HTTP",
-    server: "10.134.43.64",
-    port: 18080,
-    type: "http"
-  });
-
-  config.proxies = proxies;
   
   // 1. 过滤节点（增强版）
   const excludeKeywords = [
     "过期", "剩余", "套餐", "官网", "重置", "到期", "流量", 
     "测试", "发布页", "群", "国内", "邀请", 
-    "USE", "USED", "TOTAL", "EXPIRE", "EMAIL","以下","以上","禁止"
+    "USE", "USED", "TOTAL", "EXPIRE", "EMAIL"
   ];
 
   const baseProxyNames = proxies
     .map(p => p && p.name)
     .filter(Boolean)
-    .filter(name => !neteaseOnlyProxyNameSet.has(name))
     .filter(name => {
       const lowerName = name.toLowerCase();
       return !excludeKeywords.some(keyword => lowerName.includes(keyword.toLowerCase()));
     });
 
-  const neteaseExtraNames = proxies
-    .map(p => p && p.name)
-    .filter(Boolean)
-    .filter(name => neteaseOnlyProxyNameSet.has(name));
-
   // 从 config.proxies 中移除被过滤的节点
-  const validProxyNames = new Set([...baseProxyNames, ...neteaseExtraNames]);
+  const validProxyNames = new Set(baseProxyNames);
   config.proxies = proxies.filter(p => p && p.name && validProxyNames.has(p.name));
 
-  if (baseProxyNames.length === 0 && neteaseExtraNames.length === 0) return config;
+  if (baseProxyNames.length === 0) return config;
 
   // 2. 注入规则提供者
   config["rule-providers"] = {
@@ -473,7 +452,6 @@ function main(config) {
   // 4. 定义策略组（新增负载均衡，interval=200）
   const uniq = (arr) => [...new Set(arr)];
   const baseAllProxyChoices = uniq(["♻️ 自动选择", ...baseProxyNames, "DIRECT"]);
-  const aiAllProxyChoices = uniq(["♻️ 自动选择", ...baseProxyNames, "DIRECT"]);
 
   // 构建可用地区列表（动态，仅包含有节点的地区）
   const regionDefinitions = [
@@ -544,25 +522,25 @@ function main(config) {
       name: "🤖 ChatGPT",
       type: "select",
       icon: "https://github.com/Koolson/Qure/raw/master/IconSet/Color/ChatGPT.png",
-      proxies: aiAllProxyChoices
+      proxies: ["🚀 节点选择", "♻️ 自动选择", "⚖️ 负载均衡-散列", "⚖️ 负载均衡-轮询", ...availableRegionNames, "🚀 手动切换", "DIRECT"]
     },
     {
       name: "🧠 Gemini",
       type: "select",
       icon: "https://www.gstatic.com/lamda/images/gemini_sparkle_aurora_33f86dc0c0257da337c63.svg",
-      proxies: aiAllProxyChoices
+      proxies: ["🚀 节点选择", "♻️ 自动选择", "⚖️ 负载均衡-散列", "⚖️ 负载均衡-轮询", ...availableRegionNames, "🚀 手动切换", "DIRECT"]
     },
     {
       name: "✈️ Copilot",
       type: "select",
       icon: "https://raw.githubusercontent.com/lobehub/lobe-icons/refs/heads/master/packages/static-png/light/copilot-color.png",
-      proxies: aiAllProxyChoices
+      proxies: ["🚀 节点选择", "♻️ 自动选择", "⚖️ 负载均衡-散列", "⚖️ 负载均衡-轮询", ...availableRegionNames, "🚀 手动切换", "DIRECT"]
     },
     {
       name: "💬 其他AI",
       type: "select",
       icon: "https://github.com/Koolson/Qure/raw/master/IconSet/Color/AI.png",
-      proxies: aiAllProxyChoices
+      proxies: ["🚀 节点选择", "♻️ 自动选择", "⚖️ 负载均衡-散列", "⚖️ 负载均衡-轮询", ...availableRegionNames, "🚀 手动切换", "DIRECT"]
     },
     // --- 应用分组 ---
     {
@@ -570,12 +548,6 @@ function main(config) {
       type: "select",
       icon: "https://github.com/Koolson/Qure/raw/master/IconSet/Color/Telegram_X.png",
       proxies: ["🚀 节点选择", "♻️ 自动选择", "⚖️ 负载均衡-散列", "⚖️ 负载均衡-轮询", ...availableRegionNames, "🚀 手动切换", "DIRECT"]
-    },
-    {
-      name: "🎶 网易音乐",
-      type: "select",
-      icon: "https://github.com/Koolson/Qure/raw/master/IconSet/Color/Music.png",
-      proxies: ["DIRECT", "🎶 网易音乐 HTTP"]
     },
     {
       name: "🐦 推特社交",
@@ -656,7 +628,7 @@ function main(config) {
       proxies: ["🚀 节点选择", "♻️ 自动选择", "⚖️ 负载均衡-散列", "⚖️ 负载均衡-轮询", "DIRECT", ...availableRegionNames, "🚀 手动切换"]
     },
     // --- 地区分组（新增负载均衡子组）---
-    // 地区定义
+    // 香港
     ...(hasProxiesForRegion(/HK|Hong|Kong|香港|港/) ? [
       {
         name: "🇭🇰 香港节点",
@@ -864,21 +836,15 @@ function main(config) {
   // 5. 规则组合（优先级排序）
   // =========================================================
   const finalRules = [
-    // "PROCESS-NAME,ClashMacDashboard,🚀 节点选择",
     "DOMAIN-SUFFIX,ip.sb,🚀 节点选择",
-    // 1. 追踪与广告拦截（最高优先级）
     
+    // 1. 追踪与广告拦截（最高优先级）
     "RULE-SET,tracking_rule,🛑 广告拦截",
     "RULE-SET,advertising_rule,🛑 广告拦截",
     "RULE-SET,advertising_ip,🛑 广告拦截,no-resolve",
     "RULE-SET,ad_rule,🛑 广告拦截",
     "RULE-SET,app_rule,🍃 应用净化",
-    // 3.5 网易音乐
-    "DOMAIN-SUFFIX,163yun.com,🎶 网易音乐",
-    "DOMAIN-SUFFIX,music.163.com,🎶 网易音乐",
-    "DOMAIN-SUFFIX,music.126.net,🎶 网易音乐",
-    "DOMAIN-KEYWORD,music.126.net,🎶 网易音乐",
-    "IP-CIDR,59.111.19.33/32,🎶 网易音乐,no-resolve",
+
     // 2. 隐私与直连（第二优先级）
     "RULE-SET,private_rule,🎯 全球直连",
     "RULE-SET,private_ip,🎯 全球直连,no-resolve",
@@ -889,7 +855,7 @@ function main(config) {
     "RULE-SET,xptv_rule,🎯 全球直连",
     "RULE-SET,xptv_ip,🎯 全球直连,no-resolve",
 
-    // 1.5 本地地址直连
+    // 3. 本地地址直连
     "DOMAIN-SUFFIX,acl4.ssr,DIRECT",
     "DOMAIN-SUFFIX,ip6-localhost,DIRECT",
     "DOMAIN-SUFFIX,ip6-loopback,DIRECT",
@@ -910,24 +876,17 @@ function main(config) {
     "IP-CIDR6,fc00::/7,DIRECT,no-resolve",
     "IP-CIDR6,fe80::/10,DIRECT,no-resolve",
     "IP-CIDR6,fd00::/8,DIRECT,no-resolve",
+    
+    // 4. OneDrive 直连
     "DOMAIN-KEYWORD,onedrive,🎯 全球直连",
-    // 2. OneDrive 直连
-    // "DOMAIN-KEYWORD,api.ip,🚀 节点选择",
-    // "DOMAIN-KEYWORD,ip.sb,🚀 节点选择",
-
     "DOMAIN-KEYWORD,sharepoint,🎯 全球直连",
     "DOMAIN-SUFFIX,live.com,🎯 全球直连",
     "DOMAIN-SUFFIX,microsoftonline.com,🎯 全球直连",
 
-    // 3. AI 平台规则（本地优先）
+    // 5. AI 平台规则（分离优先）
     ...aiRules,
 
-
-
-    // 4. 应用与服务分流
-    // 进程匹配规则
-
-
+    // 6. 应用与服务分流
     "RULE-SET,telegram_rule,📲 电报消息",
     "RULE-SET,telegram_ip,📲 电报消息,no-resolve",
     "RULE-SET,twitter_rule,🐦 推特社交",
@@ -938,7 +897,7 @@ function main(config) {
     "RULE-SET,newsmedia_rule,📰 新闻媒体",
     "RULE-SET,games_rule,🎮 游戏平台",
 
-    // 5. 流媒体分流（合并到统一策略组）
+    // 7. 流媒体分流（合并到统一策略组）
     "RULE-SET,emby_rule,🎬 流媒体服务",
     "RULE-SET,emby_ip,🎬 流媒体服务,no-resolve",
     "RULE-SET,netflix_rule,🎬 流媒体服务",
@@ -947,26 +906,28 @@ function main(config) {
     "RULE-SET,streaming_rule,🎬 流媒体服务",
     "RULE-SET,streaming_ip,🎬 流媒体服务,no-resolve",
 
-    // 6. 大厂服务
+    // 8. 大厂服务
     "RULE-SET,apple_rule,🍎 苹果服务",
     "RULE-SET,google_rule,🔍 谷歌服务",
     "RULE-SET,google_ip,🔍 谷歌服务,no-resolve",
     "RULE-SET,microsoft_rule,Ⓜ️ 微软服务",
 
-    // 7. 代理与中国分流
+    // 9. 代理与中国分流
     "RULE-SET,gfw_rule,🚀 节点选择",
     "RULE-SET,proxy_rule,🚀 节点选择",
     "RULE-SET,proxy_ip,🚀 节点选择,no-resolve",
     "RULE-SET,china_rule,🎯 全球直连",
     "RULE-SET,china_ip,🎯 全球直连,no-resolve",
   
-    // 8. 兜底规则
+    // 10. 兜底规则
     "MATCH,🐟 漏网之鱼"
   ];
 
   config.rules = finalRules;
 
-  // DNS 配置
+  // =========================================================
+  // 6. DNS 配置
+  // =========================================================
   if (!config.dns) config.dns = {};
   if (config.dns.enable !== true) config.dns.enable = true;
   if (!Array.isArray(config.dns.nameserver) || config.dns.nameserver.length === 0) {
@@ -981,19 +942,12 @@ function main(config) {
       "tls://dns.google:853"
     ];
   }
+
+  // =========================================================
+  // 7. 其他配置
+  // =========================================================
   config['mixed-port'] = 56789;
   config['global-client-fingerprint'] = 'chrome';
-  // 认证配置
-  config['authentication'] = [
-    "chiam:cmy666"
-  ];
-  config['skip-auth-prefixes'] = [
-    "192.168.1.0/24",
-    "192.168.31.0/24",
-    "192.168.100.0/24",
-    "127.0.0.1/8",
- 
-  ];
 
   // 流量嗅探配置
   config['sniffer'] = {

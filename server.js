@@ -158,6 +158,67 @@ function getBaseUrl(req) {
   return `${req.protocol}://${req.get('host')}`;
 }
 
+function extractDescription(code = '') {
+  const lines = code.split(/\r?\n/);
+  const descLines = [];
+  let inBlock = false;
+  let zh = '';
+  let en = '';
+
+  for (const raw of lines) {
+    const line = raw.trim();
+    if (!line) {
+      if ((descLines.length || zh || en) && !inBlock) break;
+      continue;
+    }
+
+    const handleLine = (text) => {
+      const match = text.match(/^([A-Za-z]{2}):\s*(.*)$/);
+      if (match) {
+        const tag = match[1].toLowerCase();
+        const content = match[2].trim();
+        if (tag === 'zh') zh = content;
+        if (tag === 'en') en = content;
+      } else {
+        descLines.push(text.trim());
+      }
+    };
+
+    if (line.startsWith('//')) {
+      handleLine(line.replace(/^\/\/\s?/, ''));
+      continue;
+    }
+
+    if (line.startsWith('/*')) {
+      inBlock = true;
+      const cleaned = line.replace(/^\/\*\s?/, '').replace(/\*\/$/, '').trim();
+      if (cleaned) handleLine(cleaned);
+      if (line.includes('*/')) {
+        inBlock = false;
+        break;
+      }
+      continue;
+    }
+
+    if (inBlock) {
+      const cleaned = line.replace(/^\*\s?/, '').replace(/\*\/$/, '').trim();
+      if (cleaned) handleLine(cleaned);
+      if (line.includes('*/')) {
+        inBlock = false;
+        break;
+      }
+      continue;
+    }
+
+    if (descLines.length || zh || en) break;
+    break;
+  }
+
+  const fallback = descLines.join(' ').trim() || undefined;
+  const description = zh || en || fallback;
+  return description ? { description, zh: zh || undefined, en: en || undefined } : undefined;
+}
+
 // ==================== 脚本管理 ====================
 
 // 获取所有脚本
@@ -170,7 +231,14 @@ app.get('/api/scripts', (req, res) => {
     const scripts = files.filter(f => f.endsWith('.js')).map(f => {
       const name = f.replace('.js', '');
       const code = fs.readFileSync(path.join(scriptsDir, f), 'utf8');
-      return { name, code };
+      const desc = extractDescription(code) || {};
+      return {
+        name,
+        code,
+        description: desc.description,
+        descriptionZh: desc.zh,
+        descriptionEn: desc.en
+      };
     });
     
     // 检查是否是来自网页的请求
@@ -210,7 +278,14 @@ app.get('/api/scripts/:name', (req, res) => {
       return res.status(404).json({ error: '脚本不存在' });
     }
     const code = fs.readFileSync(filePath, 'utf8');
-    res.json({ name: scriptName, code });
+    const desc = extractDescription(code) || {};
+    res.json({
+      name: scriptName,
+      code,
+      description: desc.description,
+      descriptionZh: desc.zh,
+      descriptionEn: desc.en
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

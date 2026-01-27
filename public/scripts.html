@@ -134,18 +134,24 @@
                 }
 
                 const lang = localStorage.getItem('lang') || 'zh';
-                container.innerHTML = scripts.map(script => `
+                container.innerHTML = scripts.map(script => {
+                    const descAuto = (script.code || '').replace(/\s+/g, ' ').trim();
+                    const desc = lang === 'en'
+                        ? (script.descriptionEn || script.descriptionZh || script.description || descAuto)
+                        : (script.descriptionZh || script.descriptionEn || script.description || descAuto);
+                    return `
                     <div class="script-item">
                         <div>
                             <h3>${script.name}</h3>
-                            <p class="excerpt">${(script.code || '').replace(/\s+/g, ' ').trim()}</p>
+                            <p class="excerpt">${desc}</p>
                         </div>
                         <div class="script-actions">
                             <button class="secondary" onclick="editScript('${script.name}')">${i18nMessages.edit[lang]}</button>
                             <button class="danger" onclick="deleteScript('${script.name}')">${i18nMessages.delete[lang]}</button>
                         </div>
                     </div>
-                `).join('');
+                    `;
+                }).join('');
             } catch (error) {
                 const lang = localStorage.getItem('lang') || 'zh';
                 showMessage(i18nMessages.loadFailed[lang] + ': ' + error.message, 'error');

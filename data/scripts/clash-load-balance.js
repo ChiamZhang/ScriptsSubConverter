@@ -1,6 +1,6 @@
-// Clash 完整分流配置脚本
-// 功能：完整的在线规则集配置，包含广告拦截、应用分流、流媒体服务、AI 平台等全面的分流规则和策略组
-// 适用：Mihomo/Clash.Meta 核心，适合需要详细分流控制的用户
+// Clash 负载均衡完整配置脚本 - AI 合并版
+// 功能：完整的负载均衡配置，包含自动选择、散列、轮询三种模式，支持地区分组，所有 AI 服务合并为一个策略组
+// 适用：Mihomo/Clash.Meta 核心，适合需要负载均衡和完整分流规则的用户
 
 // =========================================================
 // 1. 在线规则集配置
@@ -51,32 +51,32 @@ const remoteProviders = {
 };
 
 // =========================================================
-// 2. AI 平台专用规则（保留本地控制）
+// 2. AI 平台专用规则（合并）
 // =========================================================
 const aiRules = [
   // ChatGPT
-  "DOMAIN-KEYWORD,openai,🤖 ChatGPT",
-  "DOMAIN-SUFFIX,chatgpt.com,🤖 ChatGPT",
-  "DOMAIN-SUFFIX,openai.com,🤖 ChatGPT",
-  "DOMAIN-SUFFIX,auth0.com,🤖 ChatGPT",
-  "DOMAIN-SUFFIX,identrust.com,🤖 ChatGPT",
+  "DOMAIN-KEYWORD,openai,🤖 AI 服务",
+  "DOMAIN-SUFFIX,chatgpt.com,🤖 AI 服务",
+  "DOMAIN-SUFFIX,openai.com,🤖 AI 服务",
+  "DOMAIN-SUFFIX,auth0.com,🤖 AI 服务",
+  "DOMAIN-SUFFIX,identrust.com,🤖 AI 服务",
   
   // Gemini
-  "DOMAIN-SUFFIX,gemini.google.com,🧠 Gemini",
-  "DOMAIN-SUFFIX,bard.google.com,🧠 Gemini",
-  "DOMAIN-KEYWORD,gemini,🧠 Gemini",
-  "DOMAIN-SUFFIX,generativelanguage.googleapis.com,🧠 Gemini",
+  "DOMAIN-SUFFIX,gemini.google.com,🤖 AI 服务",
+  "DOMAIN-SUFFIX,bard.google.com,🤖 AI 服务",
+  "DOMAIN-KEYWORD,gemini,🤖 AI 服务",
+  "DOMAIN-SUFFIX,generativelanguage.googleapis.com,🤖 AI 服务",
   
   // Copilot
-  "DOMAIN-SUFFIX,copilot.microsoft.com,✈️ Copilot",
-  "DOMAIN-KEYWORD,copilot,✈️ Copilot",
-  "DOMAIN-SUFFIX,sydney.bing.com,✈️ Copilot",
-  "DOMAIN-SUFFIX,bingapis.com,✈️ Copilot",
+  "DOMAIN-SUFFIX,copilot.microsoft.com,🤖 AI 服务",
+  "DOMAIN-KEYWORD,copilot,🤖 AI 服务",
+  "DOMAIN-SUFFIX,sydney.bing.com,🤖 AI 服务",
+  "DOMAIN-SUFFIX,bingapis.com,🤖 AI 服务",
   
   // Claude & 其他 AI
-  "DOMAIN-KEYWORD,anthropic,💬 其他AI",
-  "DOMAIN-KEYWORD,claude,💬 其他AI",
-  "DOMAIN-SUFFIX,anthropic.com,💬 其他AI"
+  "DOMAIN-KEYWORD,anthropic,🤖 AI 服务",
+  "DOMAIN-KEYWORD,claude,🤖 AI 服务",
+  "DOMAIN-SUFFIX,anthropic.com,🤖 AI 服务"
 ];
 
 // =========================================================
@@ -84,53 +84,27 @@ const aiRules = [
 // =========================================================
 function main(config) {
   const proxies = config.proxies || [];
-
-  // 手动注入：网易音乐专用节点
-  const neteaseOnlyProxyNames = ["🎶 网易音乐 HTTP"];
-  const neteaseOnlyProxyNameSet = new Set(neteaseOnlyProxyNames);
-
-  const ensureProxyExists = (proxy) => {
-    if (!proxy || !proxy.name) return;
-    if (proxies.some(p => p && p.name === proxy.name)) return;
-    proxies.push(proxy);
-  };
-
-  // 手动注入：网易音乐 HTTP 代理
-  ensureProxyExists({
-    name: "🎶 网易音乐 HTTP",
-    server: "10.134.43.64",
-    port: 18080,
-    type: "http"
-  });
-
-  config.proxies = proxies;
   
   // 1. 过滤节点（增强版）
   const excludeKeywords = [
     "过期", "剩余", "套餐", "官网", "重置", "到期", "流量", 
     "测试", "发布页", "群", "国内", "邀请", 
-    "USE", "USED", "TOTAL", "EXPIRE", "EMAIL","以下","以上","禁止"
+    "USE", "USED", "TOTAL", "EXPIRE", "EMAIL"
   ];
 
   const baseProxyNames = proxies
     .map(p => p && p.name)
     .filter(Boolean)
-    .filter(name => !neteaseOnlyProxyNameSet.has(name))
     .filter(name => {
       const lowerName = name.toLowerCase();
       return !excludeKeywords.some(keyword => lowerName.includes(keyword.toLowerCase()));
     });
 
-  const neteaseExtraNames = proxies
-    .map(p => p && p.name)
-    .filter(Boolean)
-    .filter(name => neteaseOnlyProxyNameSet.has(name));
-
   // 从 config.proxies 中移除被过滤的节点
-  const validProxyNames = new Set([...baseProxyNames, ...neteaseExtraNames]);
+  const validProxyNames = new Set(baseProxyNames);
   config.proxies = proxies.filter(p => p && p.name && validProxyNames.has(p.name));
 
-  if (baseProxyNames.length === 0 && neteaseExtraNames.length === 0) return config;
+  if (baseProxyNames.length === 0) return config;
 
   // 2. 注入规则提供者
   config["rule-providers"] = {
@@ -473,7 +447,6 @@ function main(config) {
   // 4. 定义策略组（新增负载均衡，interval=200）
   const uniq = (arr) => [...new Set(arr)];
   const baseAllProxyChoices = uniq(["♻️ 自动选择", ...baseProxyNames, "DIRECT"]);
-  const aiAllProxyChoices = uniq(["♻️ 自动选择", ...baseProxyNames, "DIRECT"]);
 
   // 构建可用地区列表（动态，仅包含有节点的地区）
   const regionDefinitions = [
@@ -539,30 +512,12 @@ function main(config) {
       hidden: true,
       proxies: baseProxyNames
     },
-    // --- AI 细分策略组 ---
+    // --- AI 策略组 ---
     {
-      name: "🤖 ChatGPT",
+      name: "🤖 AI 服务",
       type: "select",
       icon: "https://github.com/Koolson/Qure/raw/master/IconSet/Color/ChatGPT.png",
-      proxies: aiAllProxyChoices
-    },
-    {
-      name: "🧠 Gemini",
-      type: "select",
-      icon: "https://www.gstatic.com/lamda/images/gemini_sparkle_aurora_33f86dc0c0257da337c63.svg",
-      proxies: aiAllProxyChoices
-    },
-    {
-      name: "✈️ Copilot",
-      type: "select",
-      icon: "https://raw.githubusercontent.com/lobehub/lobe-icons/refs/heads/master/packages/static-png/light/copilot-color.png",
-      proxies: aiAllProxyChoices
-    },
-    {
-      name: "💬 其他AI",
-      type: "select",
-      icon: "https://github.com/Koolson/Qure/raw/master/IconSet/Color/AI.png",
-      proxies: aiAllProxyChoices
+      proxies: ["🚀 节点选择", "♻️ 自动选择", "⚖️ 负载均衡-散列", "⚖️ 负载均衡-轮询", ...availableRegionNames, "🚀 手动切换", "DIRECT"]
     },
     // --- 应用分组 ---
     {
@@ -570,12 +525,6 @@ function main(config) {
       type: "select",
       icon: "https://github.com/Koolson/Qure/raw/master/IconSet/Color/Telegram_X.png",
       proxies: ["🚀 节点选择", "♻️ 自动选择", "⚖️ 负载均衡-散列", "⚖️ 负载均衡-轮询", ...availableRegionNames, "🚀 手动切换", "DIRECT"]
-    },
-    {
-      name: "🎶 网易音乐",
-      type: "select",
-      icon: "https://github.com/Koolson/Qure/raw/master/IconSet/Color/Music.png",
-      proxies: ["DIRECT", "🎶 网易音乐 HTTP"]
     },
     {
       name: "🐦 推特社交",
@@ -873,12 +822,7 @@ function main(config) {
     "RULE-SET,advertising_ip,🛑 广告拦截,no-resolve",
     "RULE-SET,ad_rule,🛑 广告拦截",
     "RULE-SET,app_rule,🍃 应用净化",
-    // 3.5 网易音乐
-    "DOMAIN-SUFFIX,163yun.com,🎶 网易音乐",
-    "DOMAIN-SUFFIX,music.163.com,🎶 网易音乐",
-    "DOMAIN-SUFFIX,music.126.net,🎶 网易音乐",
-    "DOMAIN-KEYWORD,music.126.net,🎶 网易音乐",
-    "IP-CIDR,59.111.19.33/32,🎶 网易音乐,no-resolve",
+
     // 2. 隐私与直连（第二优先级）
     "RULE-SET,private_rule,🎯 全球直连",
     "RULE-SET,private_ip,🎯 全球直连,no-resolve",
@@ -983,17 +927,6 @@ function main(config) {
   }
   config['mixed-port'] = 56789;
   config['global-client-fingerprint'] = 'chrome';
-  // 认证配置
-  config['authentication'] = [
-    "chiam:cmy666"
-  ];
-  config['skip-auth-prefixes'] = [
-    "192.168.1.0/24",
-    "192.168.31.0/24",
-    "192.168.100.0/24",
-    "127.0.0.1/8",
- 
-  ];
 
   // 流量嗅探配置
   config['sniffer'] = {
