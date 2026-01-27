@@ -1,6 +1,5 @@
-// SS & VMess Only - 代理类型过滤脚本
-// 功能：过滤订阅内容，只保留 Shadowsocks (ss://) 和 VMess (vmess://) 类型的代理节点
-// 适用：只支持特定协议的客户端或需要过滤其他协议的场景
+// ZH: 协议过滤脚本：仅保留 SS/VMess 链接，统计节点数，适配只支持这两种协议的客户端
+// EN: Protocol filter: keep only SS/VMess links, report node count, for clients supporting only these two protocols
 
 // 代理类型过滤脚本 - 只保留 ss:// 和 vmess:// 代理
 

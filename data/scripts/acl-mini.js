@@ -1,6 +1,5 @@
-// ACL Mini - 极简分流配置脚本
-// 功能：最精简的分流配置，只包含广告拒绝、GFW 代理、中国域名直连三个核心规则
-// 特点：策略组最少，配置最简，适合轻量级订阅和入门用户
+// ZH: 极简 ACL 分流：仅广告拒绝/GFW 代理/中国直连三大规则，节点选择+自动测速+直连兜底，最少策略组适合轻量订阅
+// EN: Minimal ACL routing: only ad-reject/GFW proxy/CN direct rules with selector+url-test+direct fallback; minimal groups for lightweight use
 
 // ACL Mini - 极简分流：广告拒绝 + GFW 走代理 + 中国域名直连
 // 适合轻量订阅，策略组保持最少

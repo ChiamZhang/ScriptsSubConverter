@@ -1,6 +1,5 @@
-// Clash Pro 专业配置脚本
-// 功能：结合在线规则集和本地静态规则，包含广告拦截、GFW 分流、中国域名/IP 直连、AI 平台细分等专业配置
-// 特点：混合规则集模式，平衡灵活性和性能
+// ZH: 专业混合规则脚本：远程广告/GFW/中国规则 + 本地静态大全，AI 细分重定向，手动/自动策略组，平衡灵活与性能
+// EN: Pro hybrid rules: remote ads/GFW/CN plus rich local static sets, AI split redirection, manual/auto groups for balanced flexibility and performance
 
 // =========================================================
 // 1. 在线规则集 (仅保留广告/隐私)

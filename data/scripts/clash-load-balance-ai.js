@@ -1,6 +1,5 @@
-// Clash 负载均衡完整配置脚本 - AI 分离版
-// 功能：完整的负载均衡配置，包含自动选择、散列、轮询三种模式，支持地区分组，AI 服务分为 ChatGPT、Gemini、Copilot、其他AI 四个独立策略组
-// 适用：Mihomo/Clash.Meta 核心，适合需要对不同 AI 平台单独配置节点的用户
+// ZH: 负载均衡脚本（AI 分离）：在线全规则，自动/散列/轮询三模式，ChatGPT/Gemini/Copilot/其他独立组＋地区分组，含 DNS/嗅探/认证
+// EN: Load-balance script (AI split): full online rules, auto/consistent-hash/round-robin modes, separate ChatGPT/Gemini/Copilot/Others plus regional groups, with DNS/sniffer/auth
 
 // =========================================================
 // Clash 负载均衡完整配置脚本（AI 分离版）

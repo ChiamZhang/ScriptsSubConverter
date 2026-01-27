@@ -1,6 +1,5 @@
-// GEO Priority - 地区优先分流配置脚本
-// 功能：根据节点名称自动识别并构建地区策略组（香港、新加坡、日本、美国），每个地区自动测速选择最优节点
-// 特点：无规则集依赖，纯地区分组，优先直连中国，适合地区敏感型应用
+// ZH: 地区优先脚本：无需远程规则，自动识别 HK/SG/JP/US 节点 url-test 选优，CN 直连，提供手动/自动/兜底策略
+// EN: Geo-priority script: no remote rules, auto-detect HK/SG/JP/US with url-test best pick, CN direct, provides manual/auto/fallback groups
 
 // GEO Priority - 优先直连中国，分流常见区域节点
 // - 自动构建地区测速分组（HK/SG/JP/US）

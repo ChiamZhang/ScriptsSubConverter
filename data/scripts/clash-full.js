@@ -1,6 +1,5 @@
-// Clash 完整分流配置脚本
-// 功能：完整的在线规则集配置，包含广告拦截、应用分流、流媒体服务、AI 平台等全面的分流规则和策略组
-// 适用：Mihomo/Clash.Meta 核心，适合需要详细分流控制的用户
+// ZH: 全量分流脚本：广告隐私/直连/下载/社交/流媒体/AI 等全套在线规则，细分应用/地区/AI 策略组，含 DNS/嗅探/认证，可用于 Mihomo/Clash.Meta
+// EN: Full routing script: comprehensive online rules (ads/privacy/direct/download/social/media/AI), detailed app/region/AI groups, with DNS/sniffer/auth for Mihomo/Clash.Meta
 
 // =========================================================
 // 1. 在线规则集配置

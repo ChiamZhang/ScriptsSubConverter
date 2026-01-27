@@ -1,6 +1,5 @@
-// Clash 负载均衡完整配置脚本 - AI 合并版
-// 功能：完整的负载均衡配置，包含自动选择、散列、轮询三种模式，支持地区分组，所有 AI 服务合并为一个策略组
-// 适用：Mihomo/Clash.Meta 核心，适合需要负载均衡和完整分流规则的用户
+// ZH: 负载均衡脚本（AI 合并）：在线全规则，自动/散列/轮询三模式，地区分组＋应用/媒体/AI 合并组，附 DNS/嗅探/认证
+// EN: Load-balance script (AI merged): full online rules, auto/consistent-hash/round-robin modes, regional plus app/media/AI merged groups, with DNS/sniffer/auth
 
 // =========================================================
 // 1. 在线规则集配置

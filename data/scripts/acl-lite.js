@@ -1,6 +1,5 @@
-// ACL Lite - 轻量级分流配置脚本
-// 功能：参考 ACL4SSR 规则的精简版，包含广告拦截、GFW 代理、中国域名直连、流媒体和电报分流
-// 特点：策略组精简，规则集在线获取，适合一般用户日常使用
+// ZH: 轻量版 ACL 分流：在线规则涵盖广告拦截/GFW/中国/媒体/电报，提供节点选择+自动测速+直连/兜底，日常稳健
+// EN: Light ACL routing: online rules for ads/GFW/CN/media/Telegram with selector+url-test+direct/fallback, stable for daily use
 
 // ACL Lite - 参考 subconverter 思路的精简版分流
 // - 注入常用在线规则集（广告 / GFW / 中国域名）
