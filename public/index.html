@@ -206,12 +206,21 @@
             </div>
 
             <button onclick="generateLink()" data-zh="🚀 生成链接" data-en="🚀 Generate Link">🚀 生成链接</button>
+            <button onclick="generateShortLink()" data-zh="🔗 生成短链接" data-en="🔗 Generate Short Link">🔗 生成短链接</button>
 
             <div id="result-container" style="margin-top: 30px; display: none;">
                 <h3 style="color: #333; margin-bottom: 15px;" data-zh="✅ 生成的链接" data-en="✅ Generated Link">✅ 生成的链接</h3>
                 <div class="result-box">
                     <span id="generatedUrl"></span>
                     <button class="copy-btn" onclick="copyToClipboard('generatedUrl')" data-zh="复制" data-en="Copy">复制</button>
+                </div>
+            </div>
+
+            <div id="short-result-container" style="margin-top: 20px; display: none;">
+                <h3 style="color: #333; margin-bottom: 15px;" data-zh="✨ 短链接" data-en="✨ Short Link">✨ 短链接</h3>
+                <div class="result-box">
+                    <span id="shortUrl"></span>
+                    <button class="copy-btn" onclick="copyToClipboard('shortUrl')" data-zh="复制" data-en="Copy">复制</button>
                 </div>
             </div>
         </div>
@@ -224,7 +233,9 @@
             copied: { zh: '已选中文本，按 Ctrl+C 复制', en: 'Text selected, press Ctrl+C to copy' },
             selectScript: { zh: '请选择脚本和输入订阅链接', en: 'Please select script and enter subscription URL' },
             linkGenerated: { zh: '链接已生成！', en: 'Link generated!' },
-            linkFailed: { zh: '生成链接失败', en: 'Failed to generate link' }
+            linkFailed: { zh: '生成链接失败', en: 'Failed to generate link' },
+            shortLinkGenerated: { zh: '短链接已生成！', en: 'Short link generated!' },
+            shortLinkFailed: { zh: '生成短链接失败', en: 'Failed to generate short link' }
         };
 
         function showMessage(message, type = 'success') {
@@ -282,10 +293,75 @@
 
                 document.getElementById('generatedUrl').textContent = url;
                 document.getElementById('result-container').style.display = 'block';
+                document.getElementById('short-result-container').style.display = 'none';
                 showMessage(i18nMessages.linkGenerated);
             } catch (error) {
                 const lang = localStorage.getItem('lang') || 'zh';
                 const prefix = lang === 'zh' ? '生成链接失败: ' : 'Failed to generate link: ';
+                showMessage(prefix + error.message, 'error');
+            }
+        }
+
+        async function generateShortLink() {
+            const script = document.getElementById('genScript').value.trim();
+            const sub = document.getElementById('genSub').value.trim();
+            let baseUrl = document.getElementById('genBaseUrl').value.trim();
+            const encoding = document.getElementById('genEncoding').value;
+            const filename = document.getElementById('genFilename').value.trim();
+
+            if (!script || !sub) {
+                showMessage(i18nMessages.selectScript, 'error');
+                return;
+            }
+
+            if (!baseUrl) baseUrl = window.location.origin;
+            baseUrl = baseUrl.replace(/\/+$/, '');
+
+            try {
+                const params = {
+                    script: encodeURIComponent(script),
+                    sub: encodeURIComponent(sub)
+                };
+                if (filename) params.filename = encodeURIComponent(filename);
+
+                let targetUrl;
+                let data;
+                if (encoding === 'base64') {
+                    let queryString = `script=${params.script}&sub=${params.sub}`;
+                    if (params.filename) queryString += `&filename=${params.filename}`;
+                    data = btoa(queryString);
+                    targetUrl = `${baseUrl}/convert?data=${encodeURIComponent(data)}`;
+                } else {
+                    targetUrl = `${baseUrl}/convert?script=${params.script}&sub=${params.sub}`;
+                    if (params.filename) targetUrl += `&filename=${params.filename}`;
+                }
+
+                const response = await fetch(`${API_BASE}/shortlink`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        url: targetUrl,
+                        script,
+                        sub,
+                        filename,
+                        data
+                    })
+                });
+
+                if (!response.ok) {
+                    const err = await response.json().catch(() => ({}));
+                    throw new Error(err.error || 'Request failed');
+                }
+
+                const result = await response.json();
+                document.getElementById('generatedUrl').textContent = targetUrl;
+                document.getElementById('result-container').style.display = 'block';
+                document.getElementById('shortUrl').textContent = result.shortUrl;
+                document.getElementById('short-result-container').style.display = 'block';
+                showMessage(i18nMessages.shortLinkGenerated);
+            } catch (error) {
+                const lang = localStorage.getItem('lang') || 'zh';
+                const prefix = lang === 'zh' ? '生成短链接失败: ' : 'Failed to generate short link: ';
                 showMessage(prefix + error.message, 'error');
             }
         }

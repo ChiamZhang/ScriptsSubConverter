@@ -95,7 +95,8 @@ app.use((req, res, next) => {
   // 允许访问登录相关资源和转换 API
   if (req.path === '/login' || req.path === '/login.html' || 
       req.path.startsWith('/api/login') || req.path.startsWith('/api/auth/check') ||
-      req.path === '/convert') {
+      req.path === '/convert' || req.path.startsWith('/api/shortlink') ||
+      req.path.startsWith('/s/')) {
     return next();
   }
   
@@ -113,6 +114,7 @@ app.use(express.static('public'));
 const dataDir = path.join(__dirname, 'data');
 const configsDir = path.join(dataDir, 'configs');
 const scriptsDir = path.join(dataDir, 'scripts');
+const shortlinksFile = path.join(dataDir, 'shortlinks.json');
 
 // 确保目录存在
 [dataDir, configsDir, scriptsDir].forEach(dir => {
@@ -120,6 +122,41 @@ const scriptsDir = path.join(dataDir, 'scripts');
     fs.mkdirSync(dir, { recursive: true });
   }
 });
+
+// 短链接存储
+let shortlinks = {};
+if (fs.existsSync(shortlinksFile)) {
+  try {
+    shortlinks = JSON.parse(fs.readFileSync(shortlinksFile, 'utf8')) || {};
+  } catch (e) {
+    console.warn('短链接文件解析失败，将重置:', e.message);
+    shortlinks = {};
+  }
+}
+
+function saveShortlinks() {
+  try {
+    fs.writeFileSync(shortlinksFile, JSON.stringify(shortlinks, null, 2));
+  } catch (e) {
+    console.error('保存短链接失败:', e.message);
+  }
+}
+
+function generateShortCode(length = 6) {
+  const chars = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  let code = '';
+  for (let i = 0; i < length; i += 1) {
+    code += chars[Math.floor(Math.random() * chars.length)];
+  }
+  return code;
+}
+
+function getBaseUrl(req) {
+  if (process.env.BASE_URL) {
+    return process.env.BASE_URL.replace(/\/$/, '');
+  }
+  return `${req.protocol}://${req.get('host')}`;
+}
 
 // ==================== 脚本管理 ====================
 
@@ -221,6 +258,91 @@ const decodeBase64 = (str) => Buffer.from(str, 'base64').toString('utf-8');
 
 // ==================== 订阅转换核心功能 ====================
 
+// ==================== 短链接功能 ====================
+
+// 创建短链接
+app.post('/api/shortlink', (req, res) => {
+  try {
+    const { url, script, sub, filename, data } = req.body || {};
+    let target = url;
+
+    if (!target) {
+      const params = new URLSearchParams();
+      if (data) {
+        params.set('data', data);
+      } else {
+        if (script) params.set('script', script);
+        if (sub) params.set('sub', sub);
+        if (filename) params.set('filename', filename);
+      }
+
+      if (!params.toString()) {
+        return res.status(400).json({ error: '缺少必要参数: url 或 script/sub' });
+      }
+
+      target = `${getBaseUrl(req)}/convert?${params.toString()}`;
+    }
+
+    if (!/^https?:\/\//i.test(target)) {
+      const prefix = target.startsWith('/') ? '' : '/';
+      target = `${getBaseUrl(req)}${prefix}${target}`;
+    }
+
+    const existing = Object.entries(shortlinks).find(([, value]) => value.url === target);
+    if (existing) {
+      const [code] = existing;
+      return res.json({
+        code,
+        url: target,
+        shortUrl: `${getBaseUrl(req)}/s/${code}`
+      });
+    }
+
+    let code = '';
+    let attempts = 0;
+    while (attempts < 10) {
+      code = generateShortCode(6 + Math.floor(attempts / 3));
+      if (!shortlinks[code]) break;
+      attempts += 1;
+    }
+
+    if (!code || shortlinks[code]) {
+      return res.status(500).json({ error: '生成短链接失败，请重试' });
+    }
+
+    shortlinks[code] = { url: target, createdAt: new Date().toISOString() };
+    saveShortlinks();
+
+    res.json({
+      code,
+      url: target,
+      shortUrl: `${getBaseUrl(req)}/s/${code}`
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// 解析短链接
+app.get('/api/shortlink/:code', (req, res) => {
+  const { code } = req.params;
+  const entry = shortlinks[code];
+  if (!entry) {
+    return res.status(404).json({ error: '短链接不存在' });
+  }
+  res.json({ code, url: entry.url, createdAt: entry.createdAt });
+});
+
+// 访问短链接（重定向）
+app.get('/s/:code', (req, res) => {
+  const { code } = req.params;
+  const entry = shortlinks[code];
+  if (!entry) {
+    return res.status(404).send('Short link not found');
+  }
+  res.redirect(302, entry.url);
+});
+
 // 获取原始订阅内容
 async function fetchSubscription(url) {
   return new Promise((resolve, reject) => {
@@ -302,6 +424,11 @@ function executeScript(content, scriptCode) {
       const scriptFunc = new Function('config', scriptCode + '\nreturn main(config);');
       const processedConfig = scriptFunc(config);
       
+      // 如果脚本输出了文本配置，直接返回
+      if (processedConfig && typeof processedConfig.text === 'string') {
+        return processedConfig.text;
+      }
+
       // 返回 YAML 格式
       const yaml = require('js-yaml');
       return yaml.dump(processedConfig, { 
@@ -371,7 +498,13 @@ app.get('/convert', async (req, res) => {
     const processed = executeScript(content, scriptCode);
     
     // 返回处理后的内容
-    res.setHeader('Content-Type', 'text/yaml; charset=utf-8');
+    const looksLikeIni = typeof processed === 'string' && /^\s*\[General\]/m.test(processed);
+    if (looksLikeIni && (!filename || filename === 'subscription.yaml')) {
+      filename = 'subscription.conf';
+    }
+
+    const contentType = looksLikeIni ? 'text/plain; charset=utf-8' : 'text/yaml; charset=utf-8';
+    res.setHeader('Content-Type', contentType);
     res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(filename)}`);
     res.send(processed);
     

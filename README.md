@@ -27,6 +27,7 @@ Born from the limitations of existing conversion tools, ScriptsSubConverter offe
   - `clash-full`: Complete Clash configuration with rule providers
   - `clash-pro`: Advanced Clash configuration with AI routing and regional groups
 - **🔐 Encoding Modes**: Support both URL encoding and Base64 encoding for nested subscriptions
+- **🔗 Short Links**: Generate and manage short links for conversion URLs
 - **🔒 Optional Password Protection**: Secure your scripts with optional authentication (disabled by default)
 - **🌐 Internationalization**: Full Chinese/English bilingual support with toggle button
 - **📱 Responsive Design**: Clean, user-friendly interface that works on all devices
@@ -89,6 +90,12 @@ To protect your scripts from unauthorized access, you can enable password authen
 5. Click **Generate Link** to create your conversion URL
 6. Copy and use the generated URL in your proxy client
 
+#### Short Link Generation
+
+1. Fill in script and subscription URL as usual
+2. Click **Generate Short Link**
+3. Use the short URL for sharing and client configuration
+
 #### Managing Scripts
 
 1. Navigate to the **Scripts** page
@@ -122,6 +129,9 @@ function main(config) {
 - `POST /api/scripts` - Create a new script
 - `PUT /api/scripts/:id` - Update an existing script
 - `DELETE /api/scripts/:id` - Delete a script
+- `POST /api/shortlink` - Create a short link
+- `GET /api/shortlink/:code` - Resolve short link metadata
+- `GET /s/:code` - Redirect to long URL
 - `GET /health` - Health check endpoint
 
 ### Technology Stack
@@ -182,6 +192,7 @@ ScriptsSubConverter 是一个强大的代理订阅转换工具，提供基于 We
   - `clash-full`: 完整的 Clash 配置（含规则集）
   - `clash-pro`: 高级 Clash 配置（含 AI 路由和区域分组）
 - **🔐 编码模式**: 支持 URL 编码和 Base64 编码，用于嵌套订阅
+- **🔗 短链接**: 为转换链接生成短链接，便于分享与配置
 - **🔒 可选密码保护**: 通过可选的身份认证保护您的脚本（默认关闭）
 - **🌐 国际化**: 完整的中英文双语支持，可一键切换
 - **📱 响应式设计**: 简洁友好的界面，适配所有设备
@@ -251,6 +262,12 @@ ScriptsSubConverter 是一个强大的代理订阅转换工具，提供基于 We
 5. 点击**生成链接**创建转换 URL
 6. 复制生成的链接并在代理客户端中使用
 
+#### 生成短链接
+
+1. 按常规填写脚本与订阅链接
+2. 点击**生成短链接**
+3. 使用短链接进行分享或客户端配置
+
 #### 管理脚本
 
 1. 进入**脚本**页面
@@ -284,6 +301,9 @@ function main(config) {
 - `POST /api/scripts` - 创建新脚本
 - `PUT /api/scripts/:id` - 更新脚本
 - `DELETE /api/scripts/:id` - 删除脚本
+- `POST /api/shortlink` - 创建短链接
+- `GET /api/shortlink/:code` - 查询短链接信息
+- `GET /s/:code` - 重定向到长链接
 - `GET /health` - 健康检查接口
 
 ### 技术栈
