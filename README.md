@@ -212,6 +212,7 @@ ScriptsSubConverter 是一个强大的代理订阅转换工具，提供基于 We
 
 ## TODO
 - [] Linux Windows Mac 安卓（闲置手机变废为宝）一键运行
+- [] 尝试封装成浏览器插件，只要浏览器开着就可以使用，尽量不安装其他客户端。
 - [] 支持 Sing-Box 配置格式转化
 - [] 支持 Surge 配置格式转化
 - [] 支持 Loon 配置格式转化
