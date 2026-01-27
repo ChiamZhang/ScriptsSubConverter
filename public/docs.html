@@ -22,6 +22,8 @@
         nav .logo img { height: 40px; width: auto; border-radius: 6px; }
         nav .nav-links { display: flex; gap: 15px; }
         nav .nav-btn { background: transparent; color: #4b5563; border: none; padding: 10px 18px; border-radius: 8px; cursor: pointer; font-size: 0.95em; transition: all 0.2s; font-weight: 600; text-decoration: none; }
+        nav .nav-btn.github-link { padding: 8px; display: flex; align-items: center; }
+        nav .nav-btn.github-link img { height: 20px; width: 20px; display: block; }
         nav .nav-btn:hover { background: #eef2ff; color: #4338ca; transform: translateY(-1px); }
         nav .nav-btn.active { background: #4338ca; color: #ffffff; }
         .lang-toggle { background: #f3f4f6; color: #374151; padding: 6px 12px; border-radius: 6px; font-size: 0.85em; cursor: pointer; border: 1px solid #d1d5db; transition: all 0.2s; }
@@ -55,7 +57,7 @@
 <body>
     <nav>
         <div class="nav-container">
-            <a href="/" class="logo">
+            <a href="https://github.com/ChiamZhang/ScriptsSubConverter" class="logo" target="_blank" rel="noopener noreferrer">
                 <img src="/images/ScriptsSubConverter.png" alt="ScriptsSubConverter">
                 <span data-zh="订阅转换器" data-en="ScriptsSubConverter">订阅转换器</span>
             </a>
@@ -63,6 +65,9 @@
                 <a class="nav-btn" href="/index.html" data-zh="转换" data-en="Convert">转换</a>
                 <a class="nav-btn" href="/scripts.html" data-zh="脚本" data-en="Scripts">脚本</a>
                 <a class="nav-btn active" href="/docs.html" data-zh="介绍" data-en="Docs">介绍</a>
+                <a class="nav-btn github-link" href="https://github.com/ChiamZhang/ScriptsSubConverter" target="_blank" rel="noopener noreferrer" aria-label="GitHub">
+                    <img src="https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png" alt="GitHub">
+                </a>
                 <button class="lang-toggle" onclick="toggleLang()">中/EN</button>
                 <button class="logout-btn" onclick="logout()" data-zh="登出" data-en="Logout">登出</button>
             </div>
@@ -76,20 +81,22 @@
             <div class="intro-section">
                 <h3 data-zh="🚀 已实现功能" data-en="🚀 Implemented Features">🚀 已实现功能</h3>
                 <ul>
-                    <li data-zh="/convert：GET，必填 script/sub，可选 filename；支持 data=Base64 打包" data-en="/convert: GET endpoint, requires script/sub, optional filename; supports data=Base64">/convert：GET，必填 script/sub，可选 filename；支持 data=Base64 打包</li>
-                    <li data-zh="/api/scripts：列出、获取、保存（语法校验）、删除脚本" data-en="/api/scripts: list, get, save (with syntax check), delete scripts">/api/scripts：列出、获取、保存（语法校验）、删除脚本</li>
-                    <li data-zh="输出为 text/yaml，文件名用 RFC5987 编码，默认 subscription.yaml" data-en="Output is text/yaml, filename uses RFC5987, defaults to subscription.yaml">输出为 text/yaml，文件名用 RFC5987 编码，默认 subscription.yaml</li>
-                    <li data-zh="健康检查：/health 返回状态与时间戳" data-en="Health check: /health returns status and timestamp">健康检查：/health 返回状态与时间戳</li>
-                    <li data-zh="静态页面：转换/脚本管理/文档" data-en="Static pages: Convert/Scripts/Docs">静态页面：转换/脚本管理/文档</li>
+                    <li data-zh="/convert：GET，必填 script/sub，可选 filename，支持 data=Base64 打包" data-en="/convert: GET, requires script/sub, optional filename, supports data=Base64">/convert：GET，必填 script/sub，可选 filename，支持 data=Base64 打包</li>
+                    <li data-zh="/api/scripts：列出/获取/保存(语法校验)/删除脚本；提取 ZH/EN 描述" data-en="/api/scripts: list/get/save (syntax check)/delete; extracts ZH/EN descriptions">/api/scripts：列出/获取/保存(语法校验)/删除脚本；提取 ZH/EN 描述</li>
+                    <li data-zh="/api/shortlink：创建短链；/api/shortlink/:code 查询；/s/:code 跳转" data-en="/api/shortlink: create short link; /api/shortlink/:code query; /s/:code redirect">/api/shortlink：创建短链；/api/shortlink/:code 查询；/s/:code 跳转</li>
+                    <li data-zh="输出为 text/yaml，文件名 RFC5987 编码，默认 subscription.yaml" data-en="Output text/yaml, filename RFC5987 encoded, default subscription.yaml">输出为 text/yaml，文件名 RFC5987 编码，默认 subscription.yaml</li>
+                    <li data-zh="静态页面：转换/脚本管理/文档；网页脚本下拉显示简介（隐藏名称含 hidden 的脚本）" data-en="Static pages: Convert/Scripts/Docs; script dropdown shows descriptions (scripts containing 'hidden' are filtered in web)">静态页面：转换/脚本管理/文档；网页脚本下拉显示简介（隐藏名称含 hidden 的脚本）</li>
+                    <li data-zh="可选登录保护（ENABLE_AUTH + ACCESS_PASSWORD 环境变量）；/health 健康检查" data-en="Optional login protection (ENABLE_AUTH + ACCESS_PASSWORD env vars); /health check">可选登录保护（ENABLE_AUTH + ACCESS_PASSWORD 环境变量）；/health 健康检查</li>
                 </ul>
             </div>
 
             <div class="intro-section">
                 <h3 data-zh="📋 基本流程" data-en="📋 Basic Workflow">📋 基本流程</h3>
                 <ol>
-                    <li data-zh="在"脚本"页保存脚本（文本处理或 Clash 配置处理）" data-en="Save script in 'Scripts' page (text or Clash config processing)">在"脚本"页保存脚本（文本处理或 Clash 配置处理）</li>
-                    <li data-zh="在"转换"页选择脚本，输入订阅链接，可选文件名，生成链接" data-en="In 'Convert', select script, enter URL, optional filename, generate link">在"转换"页选择脚本，输入订阅链接，可选文件名，生成链接</li>
-                    <li data-zh="将生成的链接粘贴到 Clash 等客户端订阅地址" data-en="Paste generated link into Clash or other client">将生成的链接粘贴到 Clash 等客户端订阅地址</li>
+                    <li data-zh="在“脚本”页保存脚本（文本处理或 Clash 配置处理），建议首行写 ZH/EN 描述" data-en="Save script in 'Scripts' page (text or Clash config); add ZH/EN description on first lines">在“脚本”页保存脚本（文本处理或 Clash 配置处理），建议首行写 ZH/EN 描述</li>
+                    <li data-zh="在“转换”页选择脚本，输入订阅链接，可选文件名，生成长链" data-en="In 'Convert', select script, enter subscription URL, optional filename, generate long link">在“转换”页选择脚本，输入订阅链接，可选文件名，生成长链</li>
+                    <li data-zh="需要短链时点“生成短链接”，获得 /s/xxxx 短链" data-en="Click 'Generate Short Link' to get /s/xxxx short URL when needed">需要短链时点“生成短链接”，获得 /s/xxxx 短链</li>
+                    <li data-zh="把生成的链接粘贴到 Clash/Mihomo 客户端订阅地址" data-en="Paste generated link into Clash/Mihomo client subscription URL">把生成的链接粘贴到 Clash/Mihomo 客户端订阅地址</li>
                 </ol>
             </div>
 
@@ -112,6 +119,15 @@
             </div>
 
             <div class="intro-section">
+                <h3 data-zh="🔗 短链接" data-en="🔗 Short Links">🔗 短链接</h3>
+                <ul>
+                    <li data-zh="前端按钮“生成短链接”调用 /api/shortlink，返回 shortUrl" data-en="Frontend button 'Generate Short Link' calls /api/shortlink and returns shortUrl">前端按钮“生成短链接”调用 /api/shortlink，返回 shortUrl</li>
+                    <li data-zh="/api/shortlink：POST { url|script/sub/filename|data } → { code, shortUrl }" data-en="/api/shortlink: POST { url|script/sub/filename|data } → { code, shortUrl }">/api/shortlink：POST { url|script/sub/filename|data } → { code, shortUrl }</li>
+                    <li data-zh="/api/shortlink/:code 查询详情；/s/:code 302 跳转到原始转换链接" data-en="/api/shortlink/:code fetch details; /s/:code 302 redirect to target">/api/shortlink/:code 查询详情；/s/:code 302 跳转到原始转换链接</li>
+                </ul>
+            </div>
+
+            <div class="intro-section">
                 <h3 data-zh="📝 脚本执行" data-en="📝 Script Execution">📝 脚本执行</h3>
                 <ul>
                     <li data-zh="文本脚本：(content) => string，返回字符串" data-en="Text script: (content) => string, returns string">文本脚本：(content) => string，返回字符串</li>
@@ -125,13 +141,17 @@
             <div class="intro-section">
                 <h3 data-zh="📦 预置脚本" data-en="📦 Preset Scripts">📦 预置脚本</h3>
                 <ul>
-                    <li data-zh="minify：去空行/注释，压缩文本订阅" data-en="minify: remove blanks/comments, compress text">minify：去空行/注释，压缩文本订阅</li>
-                    <li data-zh="ss-vmess-only：只保留 ss/vmess 协议" data-en="ss-vmess-only: keep only ss/vmess protocols">ss-vmess-only：只保留 ss/vmess 协议</li>
-                    <li data-zh="geo-priority：地区分组测速（HK/SG/JP/US），CN 直连" data-en="geo-priority: region groups (HK/SG/JP/US), CN direct">geo-priority：地区分组测速（HK/SG/JP/US），CN 直连</li>
-                    <li data-zh="acl-mini：极简分流，广告拒绝 + GFW 代理 + CN 直连" data-en="acl-mini: minimal routing, ad block + GFW proxy + CN direct">acl-mini：极简分流，广告拒绝 + GFW 代理 + CN 直连</li>
-                    <li data-zh="acl-lite：常规分流，含媒体/电报规则集" data-en="acl-lite: standard routing with media/telegram rulesets">acl-lite：常规分流，含媒体/电报规则集</li>
-                    <li data-zh="clash-full：注入基础规则、分组与在线规则提供者" data-en="clash-full: inject basic rules, groups and online providers">clash-full：注入基础规则、分组与在线规则提供者</li>
-                    <li data-zh="clash-pro：细分策略组与规则，含广告/隐私规则" data-en="clash-pro: refined groups and rules with ad/privacy">clash-pro：细分策略组与规则，含广告/隐私规则</li>
+                    <li data-zh="minify：裁剪空白/注释/多余空格，压缩订阅文本" data-en="minify: trim blanks/comments/extra spaces to shrink text subscription">minify：裁剪空白/注释/多余空格，压缩订阅文本</li>
+                    <li data-zh="ss-vmess-only：仅保留 SS/VMess 节点并统计数量" data-en="ss-vmess-only: keep only SS/VMess nodes and report count">ss-vmess-only：仅保留 SS/VMess 节点并统计数量</li>
+                    <li data-zh="geo-priority：HK/SG/JP/US 地区测速选优，CN 直连，无远程规则" data-en="geo-priority: HK/SG/JP/US latency test groups, CN direct, no remote rules">geo-priority：HK/SG/JP/US 地区测速选优，CN 直连，无远程规则</li>
+                    <li data-zh="acl-mini：极简分流，广告拒绝 + GFW 代理 + CN 直连，少量策略组" data-en="acl-mini: minimal split, ad reject + GFW proxy + CN direct, few groups">acl-mini：极简分流，广告拒绝 + GFW 代理 + CN 直连，少量策略组</li>
+                    <li data-zh="acl-lite：常规分流，广告/GFW/CN/媒体/电报规则集＋基础策略组" data-en="acl-lite: regular split with ads/GFW/CN/media/Telegram sets and base groups">acl-lite：常规分流，广告/GFW/CN/媒体/电报规则集＋基础策略组</li>
+                    <li data-zh="clash-full：全量规则集，应用/地区/AI 细分组，含 DNS/嗅探/认证" data-en="clash-full: full rulesets with app/region/AI groups, includes DNS/sniffer/auth">clash-full：全量规则集，应用/地区/AI 细分组，含 DNS/嗅探/认证</li>
+                    <li data-zh="clash-pro：远程+本地混合规则，AI 细分，手动/自动策略组" data-en="clash-pro: hybrid remote+local rules, AI split, manual/auto groups">clash-pro：远程+本地混合规则，AI 细分，手动/自动策略组</li>
+                    <li data-zh="clash-load-balance：AI 合并版，自动/散列/轮询，地区分组，含 DNS/嗅探/认证" data-en="clash-load-balance: AI merged, auto/hash/round-robin, region groups with DNS/sniffer/auth">clash-load-balance：AI 合并版，自动/散列/轮询，地区分组，含 DNS/嗅探/认证</li>
+                    <li data-zh="clash-load-balance-ai：AI 分离版，ChatGPT/Gemini/Copilot/其他独立组" data-en="clash-load-balance-ai: AI split with ChatGPT/Gemini/Copilot/Others groups">clash-load-balance-ai：AI 分离版，ChatGPT/Gemini/Copilot/其他独立组</li>
+                    <li data-zh="smart...hidden：smart 智能选优，注入 AI/网易云节点，完整分流 (网页隐藏)" data-en="smart...hidden: smart best-path with injected AI/NetEase nodes, full routing (hidden on web)">smart...hidden：smart 智能选优，注入 AI/网易云节点，完整分流 (网页隐藏)</li>
+                    <li data-zh="wori...hidden：url-test 负载均衡，注入 AI/网易云节点，完整分流 (网页隐藏)" data-en="wori...hidden: url-test load-balance with AI/NetEase nodes, full routing (hidden on web)">wori...hidden：url-test 负载均衡，注入 AI/网易云节点，完整分流 (网页隐藏)</li>
                 </ul>
             </div>
 
@@ -141,7 +161,8 @@
                     <li data-zh="拉取失败：HTTPS 嵌套或重定向时用 Base64 模式" data-en="Fetch fails: use Base64 mode for HTTPS nesting/redirects">拉取失败：HTTPS 嵌套或重定向时用 Base64 模式</li>
                     <li data-zh="文件名乱码：填 filename，服务端使用 RFC5987" data-en="Filename encoding: set filename, server uses RFC5987">文件名乱码：填 filename，服务端使用 RFC5987</li>
                     <li data-zh="脚本未生效：保存后刷新脚本下拉，重新生成链接" data-en="Script not working: refresh dropdown after save, regenerate link">脚本未生效：保存后刷新脚本下拉，重新生成链接</li>
-                    <li data-zh="安全性：脚本可访问 Node 全局和 fs/http，请自行评估" data-en="Security: scripts can access Node globals and fs/http, evaluate risks">安全性：脚本可访问 Node 全局和 fs/http，请自行评估</li>
+                    <li data-zh="安全性：脚本可访问 Node 全局和 fs/http，无沙箱，请自行评估风险" data-en="Security: scripts run in Node with fs/http access, no sandbox; assess risk">安全性：脚本可访问 Node 全局和 fs/http，无沙箱，请自行评估风险</li>
+                    <li data-zh="脚本列表缺失：名称含 hidden 的脚本网页会被过滤，仅 API 直调可见" data-en="Missing scripts: names containing 'hidden' are filtered on web; only visible via direct API">脚本列表缺失：名称含 hidden 的脚本网页会被过滤，仅 API 直调可见</li>
                 </ul>
             </div>
 

@@ -52,6 +52,8 @@
             font-weight: 600;
             text-decoration: none;
         }
+        nav .nav-btn.github-link { padding: 8px; display: flex; align-items: center; }
+        nav .nav-btn.github-link img { height: 20px; width: 20px; display: block; }
         nav .nav-btn:hover { background: #eef2ff; color: #4338ca; transform: translateY(-1px); }
         nav .nav-btn.active { background: #4338ca; color: #ffffff; }
         .lang-toggle { background: #f3f4f6; color: #374151; padding: 6px 12px; border-radius: 6px; font-size: 0.85em; cursor: pointer; border: 1px solid #d1d5db; transition: all 0.2s; }
@@ -153,7 +155,7 @@
 <body>
     <nav>
         <div class="nav-container">
-            <a href="/" class="logo">
+            <a href="https://github.com/ChiamZhang/ScriptsSubConverter" class="logo" target="_blank" rel="noopener noreferrer">
                 <img src="/images/ScriptsSubConverter.png" alt="ScriptsSubConverter">
                 <span data-zh="订阅转换器" data-en="ScriptsSubConverter">订阅转换器</span>
             </a>
@@ -161,6 +163,9 @@
                 <a class="nav-btn active" href="/index.html" data-zh="转换" data-en="Convert">转换</a>
                 <a class="nav-btn" href="/scripts.html" data-zh="脚本" data-en="Scripts">脚本</a>
                 <a class="nav-btn" href="/docs.html" data-zh="介绍" data-en="Docs">介绍</a>
+                <a class="nav-btn github-link" href="https://github.com/ChiamZhang/ScriptsSubConverter" target="_blank" rel="noopener noreferrer" aria-label="GitHub">
+                    <img src="https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png" alt="GitHub">
+                </a>
                 <button class="lang-toggle" onclick="toggleLang()">中/EN</button>
                 <button class="logout-btn" onclick="logout()" data-zh="登出" data-en="Logout">登出</button>
             </div>

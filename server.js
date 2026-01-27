@@ -8,11 +8,71 @@ const session = require('express-session');
 const cookieParser = require('cookie-parser');
 const fs = require('fs');
 const path = require('path');
+const os = require('os');
 const https = require('https');
 const http = require('http');
 
 const app = express();
 const PORT = process.env.PORT || 3005;
+const ENABLE_LOG = process.env.ENABLE_LOG !== 'false';
+const LOG_DIR = path.join(__dirname, 'data', 'logs');
+const LOG_FILE = process.env.LOG_FILE || path.join(LOG_DIR, 'server.log');
+const RESOLVED_LOG_FILE = path.isAbsolute(LOG_FILE) ? LOG_FILE : path.join(__dirname, LOG_FILE);
+let CURRENT_LOG_FILE = RESOLVED_LOG_FILE;
+
+// 日志封装：既打印控制台，又按需写入文件
+const originalConsole = { log: console.log, warn: console.warn, error: console.error };
+let fileLogAvailable = true;
+let triedFallbackLog = false;
+function writeLog(level, args) {
+  const ts = new Date().toISOString();
+  const normalized = args.map(a => {
+    if (a instanceof Error) {
+      return `${a.message} stack=${a.stack}`;
+    }
+    if (typeof a === 'string') return a;
+    try {
+      return JSON.stringify(a);
+    } catch (e) {
+      return String(a);
+    }
+  });
+  const line = [ts, level, ...normalized].join(' ');
+  if (ENABLE_LOG) {
+    try {
+      // 确保日志目录可写；若路径不可写则退化为控制台输出
+      const targetDir = path.dirname(CURRENT_LOG_FILE);
+      if (!fs.existsSync(targetDir)) fs.mkdirSync(targetDir, { recursive: true });
+      if (fileLogAvailable) {
+        fs.appendFileSync(CURRENT_LOG_FILE, line + '\n');
+      }
+    } catch (e) {
+      if (fileLogAvailable) {
+        if (!triedFallbackLog) {
+          triedFallbackLog = true;
+          try {
+            const fallback = path.join(os.tmpdir(), 'subconverter.log');
+            const fallbackDir = path.dirname(fallback);
+            if (!fs.existsSync(fallbackDir)) fs.mkdirSync(fallbackDir, { recursive: true });
+            fs.appendFileSync(fallback, line + '\n');
+            CURRENT_LOG_FILE = fallback;
+            originalConsole.warn('主日志写入失败，已切换到临时日志', fallback, e.message);
+            return;
+          } catch (fallbackErr) {
+            originalConsole.error('主/临时日志均写入失败', e.message, fallbackErr.message);
+          }
+        }
+        fileLogAvailable = false;
+        originalConsole.error('写入日志失败，已停止写文件', e.message);
+      }
+    }
+  }
+  const printer = level === 'ERROR' ? originalConsole.error : level === 'WARN' ? originalConsole.warn : originalConsole.log;
+  printer(line);
+}
+console.log = (...args) => writeLog('INFO', args);
+console.warn = (...args) => writeLog('WARN', args);
+console.error = (...args) => writeLog('ERROR', args);
 
 // 认证配置（从环境变量读取）
 const ENABLE_AUTH = process.env.ENABLE_AUTH === 'true'; // 默认关闭认证
@@ -331,6 +391,28 @@ app.delete('/api/scripts/:name', (req, res) => {
 const encodeBase64 = (str) => Buffer.from(str).toString('base64');
 const decodeBase64 = (str) => Buffer.from(str, 'base64').toString('utf-8');
 
+function maybeDecodeBase64(text) {
+  if (typeof text !== 'string') return text;
+  const cleaned = text.trim();
+  if (!cleaned || cleaned.length % 4 !== 0) return text;
+  if (!/^[A-Za-z0-9+/=\r\n]+$/.test(cleaned)) return text;
+  try {
+    const decoded = decodeBase64(cleaned.replace(/\r?\n/g, ''));
+    // 判定是否主要是可打印字符
+    const printable = decoded.split('').filter(ch => {
+      const code = ch.charCodeAt(0);
+      return code === 9 || code === 10 || code === 13 || (code >= 32 && code < 127);
+    }).length;
+    if (decoded.length > 0 && printable / decoded.length > 0.85) {
+      console.log('检测到 Base64，已解码');
+      return decoded;
+    }
+  } catch (e) {
+    // ignore decode errors
+  }
+  return text;
+}
+
 // ==================== 订阅转换核心功能 ====================
 
 // ==================== 短链接功能 ====================
@@ -419,54 +501,71 @@ app.get('/s/:code', (req, res) => {
 });
 
 // 获取原始订阅内容
-async function fetchSubscription(url) {
-  return new Promise((resolve, reject) => {
-    console.log('开始获取订阅:', url);
-    
-    const urlObj = new URL(url);
+async function fetchSubscription(url, retries = 2, timeoutMs = 30000) {
+  const urlObj = new URL(url);
+  const isGitHubRaw = urlObj.hostname.includes('raw.githubusercontent.com');
+  
+  // 对于 GitHub raw 内容，使用 45s 超时且确保 2 次重试
+  const finalTimeout = isGitHubRaw ? 45000 : timeoutMs;
+  const finalRetries = isGitHubRaw ? Math.max(retries, 2) : retries;
+
+  const attempt = (retriesLeft) => new Promise((resolve, reject) => {
+    const start = Date.now();
+    console.log('开始获取订阅', url, `剩余重试=${retriesLeft}`);
+
     const protocol = urlObj.protocol === 'https:' ? https : http;
-    
+
     const options = {
       hostname: urlObj.hostname,
       port: urlObj.port || (urlObj.protocol === 'https:' ? 443 : 80),
       path: urlObj.pathname + urlObj.search,
       method: 'GET',
-      headers: {
-        'User-Agent': 'clash-verge/v1.3.8'
-      },
-      timeout: 15000
+      headers: { 'User-Agent': 'clash-verge/v1.3.8' },
+      timeout: finalTimeout
     };
-    
+
     const req = protocol.request(options, (res) => {
       let data = '';
-      
-      res.on('data', (chunk) => {
-        data += chunk;
-      });
-      
+
+      res.on('data', (chunk) => { data += chunk; });
+
       res.on('end', () => {
         if (res.statusCode >= 200 && res.statusCode < 300) {
-          console.log('获取订阅成功，内容长度:', data.length);
+          console.log('获取订阅成功', url, `status=${res.statusCode}`, `bytes=${data.length}`, `耗时=${Date.now()-start}ms`);
           resolve(data);
         } else {
-          console.error('HTTP 错误:', res.statusCode, res.statusMessage);
+          console.error('获取订阅失败', url, `status=${res.statusCode}`, res.statusMessage, `耗时=${Date.now()-start}ms`);
           reject(new Error(`HTTP ${res.statusCode}: ${res.statusMessage}`));
         }
       });
     });
-    
+
+    const handleFailure = (reason) => {
+      const nextRetries = retriesLeft - 1;
+      if (nextRetries > 0) {
+        console.warn('请求失败，准备重试:', reason.message || reason, `剩余重试=${nextRetries}`);
+        setTimeout(() => attempt(nextRetries).then(resolve).catch(reject), 1200);
+      } else {
+        console.error('所有重试均失败，放弃', url, reason.message || reason);
+        reject(reason instanceof Error ? reason : new Error(String(reason)));
+      }
+    };
+
     req.on('error', (error) => {
-      console.error('请求失败:', error.message);
-      reject(new Error(`获取订阅失败: ${error.message}`));
+      console.error('请求失败', url, error.message, `耗时=${Date.now()-start}ms`);
+      handleFailure(new Error(`获取订阅失败: ${error.message}`));
     });
-    
+
     req.on('timeout', () => {
       req.destroy();
-      reject(new Error('获取订阅超时'));
+      console.error('请求超时', url, `耗时=${Date.now()-start}ms`);
+      handleFailure(new Error('获取订阅超时'));
     });
-    
+
     req.end();
   });
+
+  return attempt(finalRetries);
 }
 
 // 执行脚本处理订阅 - 支持两种格式
@@ -527,6 +626,7 @@ function executeScript(content, scriptCode) {
 // 主转换接口
 app.get('/convert', async (req, res) => {
   try {
+    const convertStart = Date.now();
     let script = req.query.script;
     let sub = req.query.sub;
     let filename = req.query.filename;
@@ -563,16 +663,16 @@ app.get('/convert', async (req, res) => {
     if (fs.existsSync(scriptPath)) {
       scriptCode = fs.readFileSync(scriptPath, 'utf8');
     } else {
+      console.error('转换错误 脚本不存在', { script, sub, filename });
       return res.status(404).json({ error: `脚本 "${script}" 不存在` });
     }
     
     // 获取订阅内容
-    const content = await fetchSubscription(sub);
+    let content = await fetchSubscription(sub);
+    content = maybeDecodeBase64(content);
     
     // 执行脚本处理
     const processed = executeScript(content, scriptCode);
-    
-    // 返回处理后的内容
     const looksLikeIni = typeof processed === 'string' && /^\s*\[General\]/m.test(processed);
     if (looksLikeIni && (!filename || filename === 'subscription.yaml')) {
       filename = 'subscription.conf';
@@ -582,9 +682,10 @@ app.get('/convert', async (req, res) => {
     res.setHeader('Content-Type', contentType);
     res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(filename)}`);
     res.send(processed);
+    console.log('转换完成', { script, sub, filename, bytes: (processed && processed.length) || 0, ms: Date.now() - convertStart, contentType });
     
   } catch (error) {
-    console.error('转换错误:', error);
+    console.error('转换错误', error.message, error.stack);
     res.status(500).json({ error: error.message });
   }
 });
