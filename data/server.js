@@ -1,80 +1,9 @@
-// 加载环境变量
-require('dotenv').config();
+// ⚠️ 兼容入口：历史上可能通过 `node data/server.js` 启动，导致 __dirname 变化，日志/路径混乱。
+// 现在统一委托到项目根目录的 `server.js`，确保行为一致。
+module.exports = require('../server.js');
 
-const express = require('express');
-const bodyParser = require('body-parser');
-const cors = require('cors');
-const session = require('express-session');
-const cookieParser = require('cookie-parser');
-const fs = require('fs');
-const path = require('path');
-const os = require('os');
-const https = require('https');
-const http = require('http');
-const yaml = require('js-yaml');
-
-const app = express();
-const PORT = process.env.PORT || 3005;
-const ENABLE_LOG = process.env.ENABLE_LOG !== 'false';
-const SHORTLINK_EXPIRE_DAYS = parseInt(process.env.SHORTLINK_EXPIRE_DAYS || '7', 10);
-const LOG_DIR = path.join(__dirname, 'data', 'logs');
-const LOG_FILE = process.env.LOG_FILE || path.join(LOG_DIR, 'server.log');
-const RESOLVED_LOG_FILE = path.isAbsolute(LOG_FILE) ? LOG_FILE : path.join(__dirname, LOG_FILE);
-let CURRENT_LOG_FILE = RESOLVED_LOG_FILE;
-
-// 日志封装：既打印控制台，又按需写入文件
-const originalConsole = { log: console.log, warn: console.warn, error: console.error };
-let fileLogAvailable = true;
-let triedFallbackLog = false;
-function writeLog(level, args) {
-  const ts = new Date().toISOString();
-  const normalized = args.map(a => {
-    if (a instanceof Error) {
-      return `${a.message} stack=${a.stack}`;
-    }
-    if (typeof a === 'string') return a;
-    try {
-      return JSON.stringify(a);
-    } catch (e) {
-      return String(a);
-    }
-  });
-  const line = [ts, level, ...normalized].join(' ');
-  if (ENABLE_LOG) {
-    try {
-      // 确保日志目录可写；若路径不可写则退化为控制台输出
-      const targetDir = path.dirname(CURRENT_LOG_FILE);
-      if (!fs.existsSync(targetDir)) fs.mkdirSync(targetDir, { recursive: true });
-      if (fileLogAvailable) {
-        fs.appendFileSync(CURRENT_LOG_FILE, line + '\n');
-      }
-    } catch (e) {
-      if (fileLogAvailable) {
-        if (!triedFallbackLog) {
-          triedFallbackLog = true;
-          try {
-            const fallback = path.join(os.tmpdir(), 'subconverter.log');
-            const fallbackDir = path.dirname(fallback);
-            if (!fs.existsSync(fallbackDir)) fs.mkdirSync(fallbackDir, { recursive: true });
-            fs.appendFileSync(fallback, line + '\n');
-            CURRENT_LOG_FILE = fallback;
-            originalConsole.warn('主日志写入失败，已切换到临时日志', fallback, e.message);
-            return;
-          } catch (fallbackErr) {
-            originalConsole.error('主/临时日志均写入失败', e.message, fallbackErr.message);
-          }
-        }
-        fileLogAvailable = false;
-        originalConsole.error('写入日志失败，已停止写文件', e.message);
-      }
-    }
-  }
-  const printer = level === 'ERROR' ? originalConsole.error : level === 'WARN' ? originalConsole.warn : originalConsole.log;
-  printer(line);
-}
-console.log = (...args) => writeLog('INFO', args);
-console.warn = (...args) => writeLog('WARN', args);
-console.error = (...args) => writeLog('ERROR', args);
+// ⚠️ 下面这份旧的重复实现会导致路径/日志混乱（甚至运行时报错），已禁用保留仅作历史参考。
+/* LEGACY_CODE_DISABLED
 
 // 认证配置（从环境变量读取）
 const ENABLE_AUTH = process.env.ENABLE_AUTH === 'true'; // 默认关闭认证
@@ -1039,3 +968,5 @@ app.listen(PORT, () => {
   console.log(`配置目录: ${configsDir}`);
   console.log(`脚本目录: ${scriptsDir}`);
 });
+
+*/

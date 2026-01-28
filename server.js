@@ -12,69 +12,220 @@ const os = require('os');
 const https = require('https');
 const http = require('http');
 const yaml = require('js-yaml');
+const axios = require('axios');
 
 const app = express();
 const PORT = process.env.PORT || 3005;
 const ENABLE_LOG = process.env.ENABLE_LOG !== 'false';
 const SHORTLINK_EXPIRE_DAYS = parseInt(process.env.SHORTLINK_EXPIRE_DAYS || '7', 10);
-const LOG_DIR = path.join(__dirname, 'data', 'logs');
-const LOG_FILE = process.env.LOG_FILE || path.join(LOG_DIR, 'server.log');
-const RESOLVED_LOG_FILE = path.isAbsolute(LOG_FILE) ? LOG_FILE : path.join(__dirname, LOG_FILE);
-let CURRENT_LOG_FILE = RESOLVED_LOG_FILE;
+const PROJECT_ROOT = __dirname;
+const DEFAULT_LOG_FILE = path.join(PROJECT_ROOT, 'logs', 'server.log');
+const LOG_FILE = process.env.LOG_FILE || DEFAULT_LOG_FILE;
+const LOG_MIRROR_FILE = process.env.LOG_MIRROR_FILE;
 
-// 日志封装：既打印控制台，又按需写入文件
+function resolveFromProjectRoot(p) {
+  if (!p) return p;
+  return path.isAbsolute(p) ? p : path.join(PROJECT_ROOT, p);
+}
+
+let CURRENT_LOG_FILES = [];
+function canWritePath(filePath) {
+  try {
+    if (fs.existsSync(filePath)) {
+      fs.accessSync(filePath, fs.constants.W_OK);
+      return true;
+    }
+    const dir = path.dirname(filePath);
+    if (!fs.existsSync(dir)) {
+      // 若目录不存在，尝试检查其父目录可写（mkdir 的前提）
+      const parent = path.dirname(dir);
+      fs.accessSync(parent, fs.constants.W_OK);
+      return true;
+    }
+    fs.accessSync(dir, fs.constants.W_OK);
+    return true;
+  } catch (_) {
+    return false;
+  }
+}
+{
+  const primary = resolveFromProjectRoot(LOG_FILE);
+  if (primary && canWritePath(primary)) CURRENT_LOG_FILES.push(primary);
+
+  // 可选额外镜像路径
+  if (LOG_MIRROR_FILE) {
+    const mirror = resolveFromProjectRoot(LOG_MIRROR_FILE);
+    if (
+      mirror &&
+      canWritePath(mirror) &&
+      !CURRENT_LOG_FILES.some(f => path.resolve(f) === path.resolve(mirror))
+    ) {
+      CURRENT_LOG_FILES.push(mirror);
+    }
+  }
+
+  // 若用户启用了文件日志但所有路径都不可写，直接降级到 /tmp
+  if (ENABLE_LOG && CURRENT_LOG_FILES.length === 0) {
+    const fallback = path.join(os.tmpdir(), 'subconverter.log');
+    CURRENT_LOG_FILES = [fallback];
+  }
+}
+
+// 日志封装：控制台与文件一致输出；文件额外写更详细的 JSONL
 const originalConsole = { log: console.log, warn: console.warn, error: console.error };
 let fileLogAvailable = true;
 let triedFallbackLog = false;
-function writeLog(level, args) {
-  const ts = new Date().toISOString();
-  const normalized = args.map(a => {
-    if (a instanceof Error) {
-      return `${a.message} stack=${a.stack}`;
+const LOG_FILE_MODE = (process.env.LOG_FILE_MODE || 'jsonl').toLowerCase(); // jsonl | text
+const LOG_FALLBACK = process.env.LOG_FALLBACK !== 'false'; // default true
+let warnedNoFileLogging = false;
+
+function safeJsonStringify(value) {
+  const seen = new WeakSet();
+  return JSON.stringify(value, (key, val) => {
+    if (typeof val === 'bigint') return val.toString();
+    if (val instanceof Error) {
+      return { name: val.name, message: val.message, stack: val.stack };
     }
-    if (typeof a === 'string') return a;
-    try {
-      return JSON.stringify(a);
-    } catch (e) {
-      return String(a);
+    if (val && typeof val === 'object') {
+      if (seen.has(val)) return '[Circular]';
+      seen.add(val);
     }
+    return val;
   });
-  const line = [ts, level, ...normalized].join(' ');
-  if (ENABLE_LOG) {
+}
+
+function serializeArgForConsole(a) {
+  if (a instanceof Error) {
+    return `${a.message} stack=${a.stack}`;
+  }
+  if (typeof a === 'string') return a;
+  try {
+    return safeJsonStringify(a);
+  } catch (_) {
+    return String(a);
+  }
+}
+
+function serializeArgForFile(a) {
+  if (a instanceof Error) {
+    return { error: { name: a.name, message: a.message, stack: a.stack } };
+  }
+  if (typeof a === 'string') return a;
+  return a;
+}
+
+function ensureWritableDir(filePath) {
+  const targetDir = path.dirname(filePath);
+  if (!fs.existsSync(targetDir)) fs.mkdirSync(targetDir, { recursive: true });
+}
+
+function writeToFiles(lineText, entryObject) {
+  if (!ENABLE_LOG || !fileLogAvailable) return;
+  if (CURRENT_LOG_FILES.length === 0) {
+    if (!warnedNoFileLogging) {
+      warnedNoFileLogging = true;
+      originalConsole.warn('未配置可写日志文件，已跳过写文件日志');
+    }
+    return;
+  }
+
+  for (const filePath of [...CURRENT_LOG_FILES]) {
     try {
-      // 确保日志目录可写；若路径不可写则退化为控制台输出
-      const targetDir = path.dirname(CURRENT_LOG_FILE);
-      if (!fs.existsSync(targetDir)) fs.mkdirSync(targetDir, { recursive: true });
-      if (fileLogAvailable) {
-        fs.appendFileSync(CURRENT_LOG_FILE, line + '\n');
+      ensureWritableDir(filePath);
+      if (LOG_FILE_MODE === 'text') {
+        fs.appendFileSync(filePath, lineText + '\n');
+      } else {
+        fs.appendFileSync(filePath, safeJsonStringify(entryObject) + '\n');
       }
     } catch (e) {
-      if (fileLogAvailable) {
-        if (!triedFallbackLog) {
-          triedFallbackLog = true;
-          try {
-            const fallback = path.join(os.tmpdir(), 'subconverter.log');
-            const fallbackDir = path.dirname(fallback);
-            if (!fs.existsSync(fallbackDir)) fs.mkdirSync(fallbackDir, { recursive: true });
-            fs.appendFileSync(fallback, line + '\n');
-            CURRENT_LOG_FILE = fallback;
-            originalConsole.warn('主日志写入失败，已切换到临时日志', fallback, e.message);
-            return;
-          } catch (fallbackErr) {
-            originalConsole.error('主/临时日志均写入失败', e.message, fallbackErr.message);
-          }
+      // 单个路径写失败：移除该路径，继续尝试其它路径
+      CURRENT_LOG_FILES = CURRENT_LOG_FILES.filter(f => path.resolve(f) !== path.resolve(filePath));
+      originalConsole.warn('日志写入失败，已跳过该日志文件', filePath, e.message);
+
+      // 如果一个都不剩，尝试 fallback
+      if (CURRENT_LOG_FILES.length === 0 && LOG_FALLBACK && !triedFallbackLog) {
+        triedFallbackLog = true;
+        try {
+          const fallback = path.join(os.tmpdir(), 'subconverter.log');
+          ensureWritableDir(fallback);
+          fs.appendFileSync(
+            fallback,
+            (LOG_FILE_MODE === 'text' ? (lineText + '\n') : (safeJsonStringify(entryObject) + '\n'))
+          );
+          CURRENT_LOG_FILES = [fallback];
+          originalConsole.warn('已切换到临时日志文件', fallback);
+          return;
+        } catch (fallbackErr) {
+          originalConsole.error('临时日志写入失败', fallbackErr.message);
         }
+      }
+
+      if (CURRENT_LOG_FILES.length === 0) {
+        // 不再创建额外日志文件时，保持服务运行但停止文件日志
         fileLogAvailable = false;
-        originalConsole.error('写入日志失败，已停止写文件', e.message);
+        if (!warnedNoFileLogging) {
+          warnedNoFileLogging = true;
+          originalConsole.error('写入日志失败，已停止写文件', e.message, { LOG_FALLBACK });
+        }
+        return;
       }
     }
   }
-  const printer = level === 'ERROR' ? originalConsole.error : level === 'WARN' ? originalConsole.warn : originalConsole.log;
-  printer(line);
 }
+
+function writeLog(level, args) {
+  const now = new Date();
+  // 使用本地时间（CST/UTC+8），而非 UTC
+  const ts = now.getFullYear() + '-' +
+    String(now.getMonth() + 1).padStart(2, '0') + '-' +
+    String(now.getDate()).padStart(2, '0') + 'T' +
+    String(now.getHours()).padStart(2, '0') + ':' +
+    String(now.getMinutes()).padStart(2, '0') + ':' +
+    String(now.getSeconds()).padStart(2, '0') + '.' +
+    String(now.getMilliseconds()).padStart(3, '0') + '+08:00';
+  const consoleParts = args.map(serializeArgForConsole);
+  const lineText = [ts, level, ...consoleParts].join(' ');
+
+  const fileArgs = args.map(serializeArgForFile);
+  const entry = {
+    ts,
+    level,
+    pid: process.pid,
+    hostname: os.hostname(),
+    cwd: process.cwd(),
+    line: lineText,
+    args: fileArgs
+  };
+
+  writeToFiles(lineText, entry);
+
+  const printer = level === 'ERROR' ? originalConsole.error : level === 'WARN' ? originalConsole.warn : originalConsole.log;
+  printer(lineText);
+}
+
 console.log = (...args) => writeLog('INFO', args);
 console.warn = (...args) => writeLog('WARN', args);
 console.error = (...args) => writeLog('ERROR', args);
+
+process.on('unhandledRejection', (reason) => {
+  console.error('unhandledRejection', reason);
+});
+
+process.on('uncaughtException', (err) => {
+  console.error('uncaughtException', err);
+});
+
+console.log('日志输出已启用', {
+  ENABLE_LOG,
+  LOG_FILE_MODE,
+  logFiles: CURRENT_LOG_FILES
+});
+
+let __reqSeq = 0;
+function genReqId() {
+  __reqSeq = (__reqSeq + 1) % 0x7fffffff;
+  return `${Date.now().toString(36)}-${process.pid.toString(36)}-${__reqSeq.toString(36)}`;
+}
 
 // 认证配置（从环境变量读取）
 const ENABLE_AUTH = process.env.ENABLE_AUTH === 'true'; // 默认关闭认证
@@ -99,6 +250,42 @@ app.use(session({
     httpOnly: true
   }
 }));
+
+// HTTP 访问日志：确保控制台与文件都同样详细，文件可额外保留结构化字段（jsonl）
+app.use((req, res, next) => {
+  const startNs = process.hrtime.bigint();
+  const reqId = (req.headers['x-request-id'] && String(req.headers['x-request-id'])) || genReqId();
+  req.reqId = reqId;
+  res.setHeader('X-Request-Id', reqId);
+
+  const ip = req.headers['x-forwarded-for'] ? String(req.headers['x-forwarded-for']).split(',')[0].trim() : (req.ip || req.connection?.remoteAddress);
+  const ua = req.get('user-agent');
+  const referer = req.get('referer');
+
+  console.log('HTTP_IN', {
+    reqId,
+    method: req.method,
+    path: req.originalUrl,
+    ip,
+    ua,
+    referer
+  });
+
+  res.on('finish', () => {
+    const durMs = Number(process.hrtime.bigint() - startNs) / 1e6;
+    const len = res.getHeader('content-length');
+    console.log('HTTP_OUT', {
+      reqId,
+      method: req.method,
+      path: req.originalUrl,
+      status: res.statusCode,
+      ms: Math.round(durMs * 100) / 100,
+      bytes: len ? Number(len) : undefined
+    });
+  });
+
+  next();
+});
 
 // 认证中间件
 function requireAuth(req, res, next) {
@@ -773,61 +960,66 @@ async function fetchSubscription(url, retries = 2, timeoutMs = 30000) {
   const finalTimeout = isGitHubRaw ? 45000 : timeoutMs;
   const finalRetries = isGitHubRaw ? Math.max(retries, 2) : retries;
 
-  const attempt = (retriesLeft) => new Promise((resolve, reject) => {
+  const attempt = async (retriesLeft) => {
     const start = Date.now();
     console.log('开始获取订阅', url, `剩余重试=${retriesLeft}`);
 
-    const protocol = urlObj.protocol === 'https:' ? https : http;
+    try {
+      // 配置代理（axios 会自动读取 HTTP_PROXY/HTTPS_PROXY 环境变量）
+      const config = {
+        headers: { 
+          'User-Agent': 'clash-verge/v1.3.8'
+        },
+        timeout: finalTimeout,
+        maxRedirects: 5,
+        validateStatus: (status) => status >= 200 && status < 300
+      };
 
-    const options = {
-      hostname: urlObj.hostname,
-      port: urlObj.port || (urlObj.protocol === 'https:' ? 443 : 80),
-      path: urlObj.pathname + urlObj.search,
-      method: 'GET',
-      headers: { 'User-Agent': 'clash-verge/v1.3.8' },
-      timeout: finalTimeout
-    };
-
-    const req = protocol.request(options, (res) => {
-      let data = '';
-
-      res.on('data', (chunk) => { data += chunk; });
-
-      res.on('end', () => {
-        if (res.statusCode >= 200 && res.statusCode < 300) {
-          console.log('获取订阅成功', url, `status=${res.statusCode}`, `bytes=${data.length}`, `耗时=${Date.now()-start}ms`);
-          resolve(data);
-        } else {
-          console.error('获取订阅失败', url, `status=${res.statusCode}`, res.statusMessage, `耗时=${Date.now()-start}ms`);
-          reject(new Error(`HTTP ${res.statusCode}: ${res.statusMessage}`));
+      // 明确设置代理（支持环境变量）
+      if (process.env.HTTP_PROXY || process.env.HTTPS_PROXY) {
+        const proxyUrl = urlObj.protocol === 'https:' 
+          ? (process.env.HTTPS_PROXY || process.env.HTTP_PROXY)
+          : (process.env.HTTP_PROXY || process.env.HTTPS_PROXY);
+        
+        if (proxyUrl) {
+          const proxyObj = new URL(proxyUrl);
+          config.proxy = {
+            host: proxyObj.hostname,
+            port: parseInt(proxyObj.port) || 80,
+            protocol: proxyObj.protocol.replace(':', '')
+          };
+          console.log('使用代理:', `${config.proxy.protocol}://${config.proxy.host}:${config.proxy.port}`);
         }
-      });
-    });
+      }
 
-    const handleFailure = (reason) => {
+      const response = await axios.get(url, config);
+
+      console.log('获取订阅成功', url, `status=${response.status}`, `bytes=${response.data.length}`, `耗时=${Date.now()-start}ms`);
+      return response.data;
+
+    } catch (error) {
+      const elapsed = Date.now() - start;
+      
+      if (error.code === 'ECONNABORTED' || error.message.includes('timeout')) {
+        console.error('请求超时', url, `耗时=${elapsed}ms`);
+      } else if (error.response) {
+        console.error('获取订阅失败', url, `status=${error.response.status}`, error.response.statusText, `耗时=${elapsed}ms`);
+      } else {
+        console.error('请求失败', url, error.message, `耗时=${elapsed}ms`);
+      }
+
       const nextRetries = retriesLeft - 1;
       if (nextRetries > 0) {
-        console.warn('请求失败，准备重试:', reason.message || reason, `剩余重试=${nextRetries}`);
-        setTimeout(() => attempt(nextRetries).then(resolve).catch(reject), 1200);
+        const reason = error.code === 'ECONNABORTED' ? '获取订阅超时' : `获取订阅失败: ${error.message}`;
+        console.warn('请求失败，准备重试:', reason, `剩余重试=${nextRetries}`);
+        await new Promise(resolve => setTimeout(resolve, 1200));
+        return attempt(nextRetries);
       } else {
-        console.error('所有重试均失败，放弃', url, reason.message || reason);
-        reject(reason instanceof Error ? reason : new Error(String(reason)));
+        console.error('所有重试均失败，放弃', url, error.message);
+        throw error;
       }
-    };
-
-    req.on('error', (error) => {
-      console.error('请求失败', url, error.message, `耗时=${Date.now()-start}ms`);
-      handleFailure(new Error(`获取订阅失败: ${error.message}`));
-    });
-
-    req.on('timeout', () => {
-      req.destroy();
-      console.error('请求超时', url, `耗时=${Date.now()-start}ms`);
-      handleFailure(new Error('获取订阅超时'));
-    });
-
-    req.end();
-  });
+    }
+  };
 
   return attempt(finalRetries);
 }
