@@ -181,6 +181,19 @@
             </div>
 
             <div class="form-group">
+                <label data-zh="📱 目标应用" data-en="📱 Target App">📱 目标应用</label>
+                <select id="genAppType" onchange="onAppTypeChange('genScript', 'genAppType')">
+                    <option value="">-- 全部 --</option>
+                    <option value="clash">Clash / ClashX / Clash for Windows</option>
+                    <option value="singbox">SingBox / sing-box</option>
+                    <option value="surge">Surge</option>
+                    <option value="loon">Loon</option>
+                    <option value="shadowrocket">Shadowrocket</option>
+                    <option value="quantumult">Quantumult / QuantumultX</option>
+                </select>
+            </div>
+
+            <div class="form-group">
                 <label data-zh="🎯 选择脚本" data-en="🎯 Select Script">🎯 选择脚本</label>
                 <select id="genScript" onchange="onScriptChange('genScript','genScriptDesc')">
                     <option value="">-- 选择脚本 --</option>
@@ -236,6 +249,19 @@
             <div class="info-box">
                 <h3 data-zh="隐私保护" data-en="Privacy First">隐私保护</h3>
                 <p data-zh="上传的配置仅通过 Base64 发送到服务器内存，不会被拉取或落盘；可下载或生成本地 Base64 链接，均不存盘" data-en="Config goes as Base64, processed in-memory; you can download or make a local Base64 link—no disk writes">上传的配置仅通过 Base64 发送到服务器内存，不会被拉取或落盘；可下载或生成本地 Base64 链接，均不存盘</p>
+            </div>
+
+            <div class="form-group">
+                <label data-zh="📱 目标应用" data-en="📱 Target App">📱 目标应用</label>
+                <select id="uploadAppType" onchange="onAppTypeChange('uploadScript', 'uploadAppType')">
+                    <option value="">-- 全部 --</option>
+                    <option value="clash">Clash / ClashX / Clash for Windows</option>
+                    <option value="singbox">SingBox / sing-box</option>
+                    <option value="surge">Surge</option>
+                    <option value="loon">Loon</option>
+                    <option value="shadowrocket">Shadowrocket</option>
+                    <option value="quantumult">Quantumult / QuantumultX</option>
+                </select>
             </div>
 
             <div class="form-group">
@@ -451,8 +477,43 @@
                 const descEn = s.descriptionEn || '';
                 const desc = s.description || '';
                 const descForLang = lang === 'en' ? (descEn || descZh || desc) : (descZh || descEn || desc);
-                return `<option value="${s.name}" data-desc="${(descForLang || '').replace(/"/g, '&quot;')}" data-desc-zh="${(descZh || '').replace(/"/g, '&quot;')}" data-desc-en="${(descEn || '').replace(/"/g, '&quot;')}">${s.name}</option>`;
+                
+                // 使用后端返回的 category 字段
+                const appType = s.category || 'other';
+                
+                return `<option value="${s.name}" data-app-type="${appType}" data-desc="${(descForLang || '').replace(/"/g, '&quot;')}" data-desc-zh="${(descZh || '').replace(/"/g, '&quot;')}" data-desc-en="${(descEn || '').replace(/"/g, '&quot;')}">${s.name}</option>`;
             }).join('');
+        }
+
+        // 应用类型改变时过滤脚本
+        function onAppTypeChange(scriptSelectId, appTypeSelectId) {
+            const appTypeSelect = document.getElementById(appTypeSelectId);
+            const scriptSelect = document.getElementById(scriptSelectId);
+            if (!appTypeSelect || !scriptSelect) return;
+            
+            const selectedAppType = appTypeSelect.value;
+            const options = scriptSelect.querySelectorAll('option');
+            
+            options.forEach((option, index) => {
+                if (index === 0) { // 跳过第一个 "-- 选择脚本 --" 选项
+                    option.style.display = '';
+                    return;
+                }
+                
+                const appType = option.getAttribute('data-app-type') || '';
+                if (!selectedAppType || appType === selectedAppType) {
+                    option.style.display = '';
+                } else {
+                    option.style.display = 'none';
+                }
+            });
+            
+            // 如果当前选中的脚本被隐藏了，重置选择
+            const currentOption = scriptSelect.options[scriptSelect.selectedIndex];
+            if (currentOption && currentOption.style.display === 'none') {
+                scriptSelect.selectedIndex = 0;
+                onScriptChange(scriptSelectId, scriptSelectId.replace('Script', 'ScriptDesc'));
+            }
         }
 
         async function updateScriptSelect() {

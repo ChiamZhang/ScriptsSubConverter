@@ -13,6 +13,7 @@ const https = require('https');
 const http = require('http');
 const yaml = require('js-yaml');
 const axios = require('axios');
+const vm = require('vm');
 
 const app = express();
 const PORT = process.env.PORT || 3005;
@@ -491,6 +492,34 @@ function extractDescription(code = '') {
   return description ? { description, zh: zh || undefined, en: en || undefined } : undefined;
 }
 
+// 查找脚本文件（支持子文件夹）
+function findScriptFile(scriptName) {
+  // 先尝试直接路径（兼容旧格式）
+  const directPath = path.join(scriptsDir, `${scriptName}.js`);
+  if (fs.existsSync(directPath)) {
+    return directPath;
+  }
+  
+  // 在所有子文件夹中搜索
+  const categories = fs.readdirSync(scriptsDir);
+  for (const category of categories) {
+    const categoryPath = path.join(scriptsDir, category);
+    try {
+      const stat = fs.statSync(categoryPath);
+      if (!stat.isDirectory()) continue;
+      
+      const scriptPath = path.join(categoryPath, `${scriptName}.js`);
+      if (fs.existsSync(scriptPath)) {
+        return scriptPath;
+      }
+    } catch (e) {
+      continue;
+    }
+  }
+  
+  return null;
+}
+
 // ==================== 脚本管理 ====================
 
 // 获取所有脚本
@@ -499,32 +528,49 @@ app.get('/api/scripts', (req, res) => {
     if (!fs.existsSync(scriptsDir)) {
       return res.json([]);
     }
-    const files = fs.readdirSync(scriptsDir);
-    const scripts = files.filter(f => f.endsWith('.js')).map(f => {
-      const name = f.replace('.js', '');
-      const code = fs.readFileSync(path.join(scriptsDir, f), 'utf8');
-      const desc = extractDescription(code) || {};
-      return {
-        name,
-        code,
-        description: desc.description,
-        descriptionZh: desc.zh,
-        descriptionEn: desc.en
-      };
-    });
+    
+    const scripts = [];
+    const categories = fs.readdirSync(scriptsDir);
+    
+    // 遍历每个分类文件夹
+    for (const category of categories) {
+      const categoryPath = path.join(scriptsDir, category);
+      const stat = fs.statSync(categoryPath);
+      
+      // 只处理目录
+      if (!stat.isDirectory()) continue;
+      
+      const files = fs.readdirSync(categoryPath);
+      for (const f of files) {
+        if (!f.endsWith('.js')) continue;
+        
+        const name = f.replace('.js', '');
+        const filePath = path.join(categoryPath, f);
+        const code = fs.readFileSync(filePath, 'utf8');
+        const desc = extractDescription(code) || {};
+        
+        scripts.push({
+          name,
+          code,
+          category,
+          description: desc.description,
+          descriptionZh: desc.zh,
+          descriptionEn: desc.en
+        });
+      }
+    }
     
     // 检查是否是来自网页的请求
     const referer = req.headers.referer || '';
-    // 如果 referer 中包含 .html 或者是主页路径，说明是网页访问
     const isWebPageRequest = referer.includes('.html') || referer.endsWith('/');
     
     if (isWebPageRequest) {
-      // 仃正网页访问：过滤掉包含 'hidden' 的脚本
+      // 网页访问：过滤掉包含 'hidden' 的脚本
       const filtered = scripts.filter(s => !s.name.toLowerCase().includes('hidden'));
       return res.json(filtered);
     }
     
-    // 纯 API 调用（没有 referer 或是 programmatic 调用）：返回所有脚本
+    // 纯 API 调用：返回所有脚本
     res.json(scripts);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -566,8 +612,8 @@ app.get('/api/scripts/:name', (req, res) => {
 // 创建或更新脚本
 app.post('/api/scripts/:name', (req, res) => {
   try {
-    const { code } = req.body;
-    const filePath = path.join(scriptsDir, `${req.params.name}.js`);
+    const { code, category } = req.body;
+    const scriptName = req.params.name;
     
     // 验证脚本是否有效
     try {
@@ -576,8 +622,26 @@ app.post('/api/scripts/:name', (req, res) => {
       return res.status(400).json({ error: '脚本语法错误: ' + e.message });
     }
     
+    // 确定保存路径（根据分类）
+    let targetDir = scriptsDir;
+    if (category && category !== 'other') {
+      targetDir = path.join(scriptsDir, category);
+      if (!fs.existsSync(targetDir)) {
+        fs.mkdirSync(targetDir, { recursive: true });
+      }
+    }
+    
+    // 如果脚本已存在于其他位置，先删除
+    const existingPath = findScriptPath(scriptName);
+    if (existingPath && path.dirname(existingPath) !== targetDir) {
+      fs.unlinkSync(existingPath);
+      console.log('脚本已从旧位置删除:', existingPath);
+    }
+    
+    const filePath = path.join(targetDir, `${scriptName}.js`);
     fs.writeFileSync(filePath, code);
-    res.json({ success: true, name: req.params.name });
+    console.log('脚本已保存:', filePath);
+    res.json({ success: true, name: scriptName, category: category || 'other' });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -586,11 +650,15 @@ app.post('/api/scripts/:name', (req, res) => {
 // 删除脚本
 app.delete('/api/scripts/:name', (req, res) => {
   try {
-    const filePath = path.join(scriptsDir, `${req.params.name}.js`);
-    if (!fs.existsSync(filePath)) {
+    const scriptName = req.params.name;
+    const filePath = findScriptPath(scriptName);
+    
+    if (!filePath) {
       return res.status(404).json({ error: '脚本不存在' });
     }
+    
     fs.unlinkSync(filePath);
+    console.log('脚本已删除:', filePath);
     res.json({ success: true, message: '脚本已删除' });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -847,8 +915,8 @@ app.get('/s/:code', async (req, res) => {
         return res.status(400).json({ error: '短链接参数不完整' });
       }
 
-      const scriptPath = path.join(scriptsDir, `${actualScript}.js`);
-      if (!fs.existsSync(scriptPath)) {
+      const scriptPath = findScriptFile(actualScript);
+      if (!scriptPath) {
         console.error('短链接转换错误 脚本不存在', { script: actualScript, code });
         return res.status(404).json({ error: `脚本 "${actualScript}" 不存在` });
       }
@@ -1024,42 +1092,115 @@ async function fetchSubscription(url, retries = 2, timeoutMs = 30000) {
   return attempt(finalRetries);
 }
 
-// 执行脚本处理订阅 - 支持两种格式
-function executeScript(content, scriptCode) {
+// 执行脚本处理订阅 - 支持 Clash YAML、SingBox JSON 和文本格式
+function executeScript(content, scriptCode, scriptName = '') {
   try {
+    // 根据脚本名称判断目标格式
+    const isSingBoxScript = scriptName.toLowerCase().includes('singbox') || 
+                            scriptName.toLowerCase().includes('sing-box');
+    
     // 检测脚本类型
     const isClashFormat = scriptCode.includes('function main') || 
                           scriptCode.includes('config.proxies') ||
                           scriptCode.includes('proxy-groups');
     
-    if (isClashFormat) {
-      // Clash 配置格式：处理 YAML -> JSON -> 脚本 -> JSON -> YAML
+    const isSingBoxFormat = isSingBoxScript ||
+                            scriptCode.includes('singbox') || 
+                            scriptCode.includes('SingBox') ||
+                            scriptCode.includes('outbounds') ||
+                            scriptCode.includes('clashToSingBox') ||
+                            scriptCode.includes('singBoxToClash');
+    
+    if (isClashFormat || isSingBoxFormat) {
+      // Clash/SingBox 配置格式：处理 YAML/JSON -> 脚本 -> JSON/YAML
       let config;
+      let isJsonInput = false;
       
-      // 尝试解析为 JSON（如果订阅已经是 JSON 格式）
+      // 尝试解析为 JSON（SingBox 格式或 Clash JSON）
       try {
         config = JSON.parse(content);
+        isJsonInput = true;
       } catch (e) {
-        // 如果不是 JSON，尝试解析为 YAML
+        // 如果不是 JSON，尝试解析为 YAML（Clash 格式）
         const yaml = require('js-yaml');
         try {
           config = yaml.load(content);
         } catch (yamlError) {
-          console.error('YAML 解析失败:', yamlError);
+          console.error('配置解析失败:', yamlError);
           return content;
         }
       }
       
-      // 执行脚本中的 main 函数
-      const scriptFunc = new Function('config', scriptCode + '\nreturn main(config);');
-      const processedConfig = scriptFunc(config);
+      // 执行脚本中的 main 函数 - 使用 vm 模块提供 require 支持
+      // 预加载 singbox-converter 模块
+      const singboxConverterPath = path.join(PROJECT_ROOT, 'utils/singbox-converter.js');
+      const singboxConverter = fs.existsSync(singboxConverterPath) ? 
+        require(singboxConverterPath) : null;
+      
+      // 创建自定义 require 函数
+      const customRequire = (modulePath) => {
+        // 处理相对路径
+        if (modulePath.startsWith('.')) {
+          const fullPath = path.resolve(scriptsDir, modulePath);
+          return require(fullPath);
+        }
+        // 特殊处理 singbox-converter
+        if (modulePath.includes('singbox-converter') && singboxConverter) {
+          return singboxConverter;
+        }
+        // 其他模块正常加载
+        return require(modulePath);
+      };
+      
+      const sandbox = {
+        config,
+        console,
+        require: customRequire,
+        __dirname: scriptsDir,
+        __filename: path.join(scriptsDir, `${scriptName}.js`),
+        module: { exports: {} },
+        exports: {},
+        path
+      };
+      
+      vm.createContext(sandbox);
+      
+      try {
+        vm.runInContext(scriptCode, sandbox);
+        // 尝试从 module.exports 或 exports 获取 main 函数
+        const main = sandbox.module.exports || sandbox.exports.main || sandbox.main;
+        if (typeof main === 'function') {
+          var processedConfig = main(config);
+        } else {
+          throw new Error('脚本中未找到 main 函数');
+        }
+      } catch (vmError) {
+        console.error('VM 执行错误:', vmError);
+        // 降级到旧方法
+        const scriptFunc = new Function('config', 'require', scriptCode + '\nreturn main(config);');
+        var processedConfig = scriptFunc(config, customRequire);
+      }
+      
+      // 如果脚本返回字符串，直接返回
+      if (typeof processedConfig === 'string') {
+        return processedConfig;
+      }
       
       // 如果脚本输出了文本配置，直接返回
       if (processedConfig && typeof processedConfig.text === 'string') {
         return processedConfig.text;
       }
 
-      // 返回 YAML 格式
+      // 检测输出格式：优先根据脚本名称判断
+      const shouldOutputSingBox = isSingBoxScript || 
+                                  (processedConfig && (processedConfig.outbounds || processedConfig.inbounds));
+      
+      if (shouldOutputSingBox) {
+        // 输出 SingBox JSON 格式
+        return JSON.stringify(processedConfig, null, 2);
+      }
+
+      // 否则返回 YAML 格式（Clash）
       const yaml = require('js-yaml');
       return yaml.dump(processedConfig, { 
         indent: 2,
@@ -1117,8 +1258,8 @@ app.get('/convert', async (req, res) => {
     
     // 读取脚本
     let scriptCode = '';
-    const scriptPath = path.join(scriptsDir, `${script}.js`);
-    if (fs.existsSync(scriptPath)) {
+    const scriptPath = findScriptFile(script);
+    if (scriptPath) {
       scriptCode = fs.readFileSync(scriptPath, 'utf8');
     } else {
       console.error('转换错误 脚本不存在', { script, sub, filename });
@@ -1147,21 +1288,124 @@ app.get('/convert', async (req, res) => {
       }
     }
     
-    // 执行脚本处理
-    const processed = executeScript(content, scriptCode);
-    const looksLikeIni = typeof processed === 'string' && /^\s*\[General\]/m.test(processed);
-    if (looksLikeIni && (!filename || filename === 'subscription.yaml')) {
-      filename = 'subscription.conf';
+    // 执行脚本处理（传入脚本名称用于格式判断）
+    const processed = executeScript(content, scriptCode, script);
+    
+    // 自动检测输出格式并设置文件名和 Content-Type
+    let finalFilename = filename || 'subscription.yaml';
+    let contentType = 'text/yaml; charset=utf-8';
+    
+    if (typeof processed === 'string') {
+      const trimmed = processed.trim();
+      
+      // 检测是否为 SingBox JSON 格式
+      if (trimmed.startsWith('{') && (trimmed.includes('"outbounds"') || trimmed.includes('"inbounds"'))) {
+        contentType = 'application/json; charset=utf-8';
+        if (!filename || filename === 'subscription.yaml') {
+          finalFilename = 'singbox.json';
+        }
+      }
+      // 检测是否为 INI/Conf 格式（Surge/Loon/Quantumult）
+      else if (/^\s*\[General\]/m.test(trimmed)) {
+        contentType = 'text/plain; charset=utf-8';
+        if (!filename || filename === 'subscription.yaml') {
+          finalFilename = 'subscription.conf';
+        }
+      }
+      // 默认 YAML 格式（Clash）
+      else if (!filename || filename === 'subscription.yaml') {
+        finalFilename = 'clash.yaml';
+      }
     }
 
-    const contentType = looksLikeIni ? 'text/plain; charset=utf-8' : 'text/yaml; charset=utf-8';
     res.setHeader('Content-Type', contentType);
-    res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(filename)}`);
+    res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(finalFilename)}`);
     res.send(processed);
-    console.log('转换完成', { script, sub, filename, bytes: (processed && processed.length) || 0, ms: Date.now() - convertStart, contentType });
+    console.log('转换完成', { script, sub, filename: finalFilename, bytes: (processed && processed.length) || 0, ms: Date.now() - convertStart, contentType });
     
   } catch (error) {
     console.error('转换错误', error.message, error.stack);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ==================== 格式转换 API ====================
+
+/**
+ * 格式转换接口：支持 Clash YAML 与 SingBox JSON 互转
+ * POST /api/convert/format
+ * 请求体：
+ *   - content: 配置内容（YAML 或 JSON 字符串）
+ *   - target: 目标格式（clash 或 singbox）
+ *   - contentBase64: 可选，Base64 编码的配置内容
+ */
+app.post('/api/convert/format', async (req, res) => {
+  try {
+    const { content, target, contentBase64 } = req.body || {};
+    
+    if (!target || !['clash', 'singbox'].includes(target.toLowerCase())) {
+      return res.status(400).json({ error: '参数 target 必须是 clash 或 singbox' });
+    }
+
+    let configContent;
+    if (contentBase64) {
+      try {
+        configContent = decodeBase64Strict(contentBase64);
+      } catch (e) {
+        return res.status(400).json({ error: 'Base64 解码失败: ' + e.message });
+      }
+    } else if (content) {
+      configContent = content;
+    } else {
+      return res.status(400).json({ error: '缺少必要参数: content 或 contentBase64' });
+    }
+
+    const { clashToSingBox, singBoxToClash, detectConfigType } = require('./utils/singbox-converter.js');
+    
+    // 检测源格式
+    const sourceType = detectConfigType(configContent);
+    
+    if (sourceType === 'unknown') {
+      return res.status(400).json({ error: '无法识别的配置格式' });
+    }
+
+    const targetFormat = target.toLowerCase();
+    let result;
+    let filename;
+    let contentType;
+
+    if (targetFormat === 'singbox') {
+      if (sourceType === 'singbox') {
+        return res.status(400).json({ error: '源配置已经是 SingBox 格式' });
+      }
+      // Clash -> SingBox
+      const singboxConfig = clashToSingBox(configContent);
+      result = JSON.stringify(singboxConfig, null, 2);
+      filename = 'singbox.json';
+      contentType = 'application/json; charset=utf-8';
+    } else {
+      // SingBox -> Clash
+      if (sourceType === 'clash') {
+        return res.status(400).json({ error: '源配置已经是 Clash 格式' });
+      }
+      const clashConfig = singBoxToClash(configContent);
+      result = yaml.dump(clashConfig, {
+        indent: 2,
+        lineWidth: -1,
+        noRefs: true,
+        sortKeys: false
+      });
+      filename = 'clash.yaml';
+      contentType = 'text/yaml; charset=utf-8';
+    }
+
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(filename)}`);
+    res.send(result);
+    
+    console.log('格式转换完成', { sourceType, target: targetFormat, bytes: result.length });
+  } catch (error) {
+    console.error('格式转换错误', error.message, error.stack);
     res.status(500).json({ error: error.message });
   }
 });
@@ -1176,8 +1420,8 @@ app.post('/convert/upload', async (req, res) => {
       return res.status(400).json({ error: '缺少必要参数: script 和 contentBase64' });
     }
 
-    const scriptPath = path.join(scriptsDir, `${script}.js`);
-    if (!fs.existsSync(scriptPath)) {
+    const scriptPath = findScriptFile(script);
+    if (!scriptPath) {
       console.error('上传转换错误 脚本不存在', { script });
       return res.status(404).json({ error: `脚本 "${script}" 不存在` });
     }
@@ -1202,13 +1446,33 @@ app.post('/convert/upload', async (req, res) => {
     const scriptCode = fs.readFileSync(scriptPath, 'utf8');
     const processed = executeScript(rawContent, scriptCode);
 
+    // 自动检测输出格式并设置文件名和 Content-Type
     let finalName = filename || 'subscription.yaml';
-    const looksLikeIni = typeof processed === 'string' && /^\s*\[General\]/m.test(processed);
-    if (looksLikeIni && (!filename || filename === 'subscription.yaml')) {
-      finalName = 'subscription.conf';
+    let contentType = 'text/yaml; charset=utf-8';
+    
+    if (typeof processed === 'string') {
+      const trimmed = processed.trim();
+      
+      // 检测是否为 SingBox JSON 格式
+      if (trimmed.startsWith('{') && (trimmed.includes('"outbounds"') || trimmed.includes('"inbounds"'))) {
+        contentType = 'application/json; charset=utf-8';
+        if (!filename || filename === 'subscription.yaml') {
+          finalName = 'singbox.json';
+        }
+      }
+      // 检测是否为 INI/Conf 格式（Surge/Loon/Quantumult）
+      else if (/^\s*\[General\]/m.test(trimmed)) {
+        contentType = 'text/plain; charset=utf-8';
+        if (!filename || filename === 'subscription.yaml') {
+          finalName = 'subscription.conf';
+        }
+      }
+      // 默认 YAML 格式（Clash）
+      else if (!filename || filename === 'subscription.yaml') {
+        finalName = 'clash.yaml';
+      }
     }
 
-    const contentType = looksLikeIni ? 'text/plain; charset=utf-8' : 'text/yaml; charset=utf-8';
     res.setHeader('Content-Type', contentType);
     res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(finalName)}`);
     res.send(processed);

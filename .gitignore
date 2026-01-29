@@ -17,3 +17,6 @@ data/scripts/*hidden*.js
 /home/chiam/Application/SubConverter/logs
 data/shortlinks.json
 *.log
+*hidden*
+
+./subconverter

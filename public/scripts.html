@@ -43,9 +43,19 @@
         .script-list { margin-top: 20px; }
         .script-item { background: #f8f9fa; padding: 15px 20px; margin-bottom: 12px; border-radius: 8px; border-left: 4px solid #667eea; display: flex; justify-content: space-between; align-items: center; transition: all 0.3s; }
         .script-item:hover { background: #e9ecef; transform: translateX(5px); }
-        .script-item h3 { color: #333; font-size: 1.1em; margin-bottom: 5px; }
+        .script-item h3 { color: #333; font-size: 1.1em; margin-bottom: 5px; display: flex; align-items: center; gap: 10px; }
+        .script-item .category-badge { background: #4338ca; color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.75em; font-weight: 600; }
+        .script-item .category-badge.clash { background: #e74c3c; }
+        .script-item .category-badge.singbox { background: #3498db; }
+        .script-item .category-badge.surge { background: #f39c12; }
+        .script-item .category-badge.loon { background: #9b59b6; }
+        .script-item .category-badge.shadowrocket { background: #1abc9c; }
+        .script-item .category-badge.quantumult { background: #34495e; }
+        .script-item .category-badge.other { background: #95a5a6; }
         .script-item .excerpt { color: #555; max-width: 520px; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; line-height: 1.45; word-break: break-all; }
         .script-actions { display: flex; gap: 10px; }
+        select { padding: 12px 15px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 1em; transition: all 0.3s; background: #fff; }
+        select:focus { outline: none; border-color: #667eea; box-shadow: 0 0 0 3px rgba(102,126,234,0.1); }
         .empty-state { text-align: center; padding: 40px; color: #999; font-size: 1.1em; }
         .message { position: fixed; top: 20px; right: 20px; padding: 12px 18px; border-radius: 10px; color: white; z-index: 9999; box-shadow: 0 10px 30px rgba(0,0,0,0.2); animation: slideIn 0.3s ease; }
         .message.success { background: #28a745; }
@@ -84,6 +94,19 @@
             </div>
 
             <div class="form-group">
+                <label data-zh="脚本分类" data-en="Script Category">脚本分类</label>
+                <select id="scriptCategory">
+                    <option value="other" data-zh="其他" data-en="Other">其他</option>
+                    <option value="clash" data-zh="Clash" data-en="Clash">Clash</option>
+                    <option value="singbox" data-zh="SingBox" data-en="SingBox">SingBox</option>
+                    <option value="surge" data-zh="Surge" data-en="Surge">Surge</option>
+                    <option value="loon" data-zh="Loon" data-en="Loon">Loon</option>
+                    <option value="shadowrocket" data-zh="Shadowrocket" data-en="Shadowrocket">Shadowrocket</option>
+                    <option value="quantumult" data-zh="Quantumult" data-en="Quantumult">Quantumult</option>
+                </select>
+            </div>
+
+            <div class="form-group">
                 <label data-zh="脚本代码" data-en="Script Code">脚本代码</label>
                 <textarea id="scriptCode" 
                     data-zh-placeholder="// 简单文本处理\nreturn content.split('\\n').filter(line => line.trim()).join('\\n');\n\n// 或 Clash 配置处理\nfunction main(config) {\n  // 处理 config 对象\n  return config;\n}" 
@@ -95,7 +118,22 @@
             <button class="secondary" onclick="clearScriptForm()" data-zh="🗑️ 清空" data-en="🗑️ Clear">🗑️ 清空</button>
 
             <h3 style="color: #333; margin-top: 40px; margin-bottom: 15px;" data-zh="已有脚本" data-en="Existing Scripts">已有脚本</h3>
-            <button class="secondary" onclick="loadScripts()" data-zh="🔄 刷新列表" data-en="🔄 Refresh">🔄 刷新列表</button>
+            
+            <div style="margin-bottom: 15px; display: flex; gap: 10px; align-items: center;">
+                <label data-zh="筛选分类：" data-en="Filter by:">筛选分类：</label>
+                <select id="filterCategory" onchange="loadScripts()" style="padding: 8px 12px; border-radius: 6px; border: 2px solid #e0e0e0;">
+                    <option value="" data-zh="全部" data-en="All">全部</option>
+                    <option value="clash" data-zh="Clash" data-en="Clash">Clash</option>
+                    <option value="singbox" data-zh="SingBox" data-en="SingBox">SingBox</option>
+                    <option value="surge" data-zh="Surge" data-en="Surge">Surge</option>
+                    <option value="loon" data-zh="Loon" data-en="Loon">Loon</option>
+                    <option value="shadowrocket" data-zh="Shadowrocket" data-en="Shadowrocket">Shadowrocket</option>
+                    <option value="quantumult" data-zh="Quantumult" data-en="Quantumult">Quantumult</option>
+                    <option value="other" data-zh="其他" data-en="Other">其他</option>
+                </select>
+                <button class="secondary" onclick="loadScripts()" data-zh="🔄 刷新列表" data-en="🔄 Refresh">🔄 刷新列表</button>
+            </div>
+            
             <div id="scripts-container" class="script-list"></div>
         </div>
     </div>
@@ -131,23 +169,47 @@
                 const response = await fetch(`${API_BASE}/scripts`);
                 const scripts = await response.json();
                 const container = document.getElementById('scripts-container');
+                const filterCategory = document.getElementById('filterCategory').value;
 
-                if (!scripts.length) {
+                // 过滤脚本
+                const filteredScripts = filterCategory 
+                    ? scripts.filter(s => s.category === filterCategory)
+                    : scripts;
+
+                if (!filteredScripts.length) {
                     const lang = localStorage.getItem('lang') || 'zh';
-                    container.innerHTML = `<div class="empty-state">${i18nMessages.noScripts[lang]}</div>`;
+                    const noScriptText = filterCategory 
+                        ? (lang === 'zh' ? '该分类暂无脚本' : 'No scripts in this category')
+                        : i18nMessages.noScripts[lang];
+                    container.innerHTML = `<div class="empty-state">${noScriptText}</div>`;
                     return;
                 }
 
                 const lang = localStorage.getItem('lang') || 'zh';
-                container.innerHTML = scripts.map(script => {
+                container.innerHTML = filteredScripts.map(script => {
                     const descAuto = (script.code || '').replace(/\s+/g, ' ').trim();
                     const desc = lang === 'en'
                         ? (script.descriptionEn || script.descriptionZh || script.description || descAuto)
                         : (script.descriptionZh || script.descriptionEn || script.description || descAuto);
+                    
+                    const category = script.category || 'other';
+                    const categoryText = {
+                        clash: 'Clash',
+                        singbox: 'SingBox',
+                        surge: 'Surge',
+                        loon: 'Loon',
+                        shadowrocket: 'Shadowrocket',
+                        quantumult: 'Quantumult',
+                        other: lang === 'zh' ? '其他' : 'Other'
+                    }[category] || category;
+                    
                     return `
                     <div class="script-item">
                         <div>
-                            <h3>${script.name}</h3>
+                            <h3>
+                                ${script.name}
+                                <span class="category-badge ${category}">${categoryText}</span>
+                            </h3>
                             <p class="excerpt">${desc}</p>
                         </div>
                         <div class="script-actions">
@@ -169,6 +231,11 @@
                 const script = await response.json();
                 document.getElementById('scriptName').value = name;
                 document.getElementById('scriptCode').value = script.code;
+                
+                // 设置分类
+                const category = script.category || 'other';
+                document.getElementById('scriptCategory').value = category;
+                
                 window.scrollTo({ top: 0, behavior: 'smooth' });
             } catch (error) {
                 const lang = localStorage.getItem('lang') || 'zh';
@@ -179,6 +246,7 @@
         async function saveScript() {
             const name = document.getElementById('scriptName').value.trim();
             const code = document.getElementById('scriptCode').value.trim();
+            const category = document.getElementById('scriptCategory').value;
 
             if (!name) {
                 showMessage(i18nMessages.enterName, 'error');
@@ -193,7 +261,7 @@
                 const response = await fetch(`${API_BASE}/scripts/${name}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ code })
+                    body: JSON.stringify({ code, category })
                 });
 
                 if (!response.ok) {
@@ -228,6 +296,7 @@
         function clearScriptForm() {
             document.getElementById('scriptName').value = '';
             document.getElementById('scriptCode').value = '';
+            document.getElementById('scriptCategory').value = 'other';
         }
 
         window.addEventListener('DOMContentLoaded', loadScripts);
